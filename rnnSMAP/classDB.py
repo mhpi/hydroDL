@@ -4,9 +4,8 @@ import os
 import numpy as np
 import pandas as pd
 import datetime as dt
-import funDB
+from . import funDB
 import time
-
 
 class Database(object):
     r"""Base class Database SMAP
@@ -19,7 +18,8 @@ class Database(object):
     def __init__(self, rootDB, subsetName):
         self.__rootDB = rootDB
         self.__subsetName = subsetName
-        rootName, crd, indSub, indSkip = funDB.readDBinfo(rootDB, subsetName)
+        rootName, crd, indSub, indSkip = funDB.readDBinfo(
+            rootDB=rootDB, subsetName=subsetName)
         self.__crd = crd
         self.__indSub = indSub
         self.__indSkip = indSkip
@@ -62,33 +62,39 @@ class Dataset(Database):
     Arguments:
     """
 
-    def __init__(self, rootDB, subsetName,
+    def __init__(self, *, rootDB, subsetName,
                  yrLst, var=(None, None), targetName='SMAP_AM'):
         super().__init__(rootDB, subsetName)
         self.__yrLst = yrLst
         if yrLst is not None:
-            self.__time = funDB.readDBtime(self.rootDB, self.rootName, yrLst)
+            self.__time = funDB.readDBtime(
+                rootDB=self.rootDB, rootName=self.rootName, yrLst=yrLst)
         else:
             self.__time = None
 
-        # input predictors
+        # input data
         self.__input = None
         self.__statInput = None
         self.__normInput = None
+
+        # input variable
         if isinstance(var[0], list):
             self.__varInputTs = var[0]
         else:
-            self.__varInputTs = funDB.readVarLst(self.rootDB, var[0])
+            self.__varInputTs = funDB.readVarLst(
+                rootDB=self.rootDB, varLst=var[0])
         if isinstance(var[1], list):
             self.__varInputConst = var[1]
         else:
-            self.__varInputConst = funDB.readVarLst(self.rootDB, var[1])
+            self.__varInputConst = funDB.readVarLst(
+                rootDB=self.rootDB, varLst=var[1])
         self.__varInput = self.__varInputTs + self.__varInputConst
 
-        # target
+        # target data
         self.__target = None
         self.__varTarget = targetName
         self.__statTarget = None
+        self.__normTarget = None
 
     @property
     def time(self):
@@ -138,22 +144,23 @@ class Dataset(Database):
     def normTarget(self):
         return self.__normTarget
 
-    def readTarget(self, loadData=True, loadStat=True, loadNorm=False):
+    def readTarget(self, *, loadData=True, loadStat=True, loadNorm=False):
         nt = len(self.time)
         ngrid = len(self.indSub)
-        data = funDB.readDataTS(self.rootDB, self.rootName, self.indSub,
-                                self.indSkip, self.yrLst, self.varTarget, nt, ngrid=ngrid)
-        stat = funDB.readStat(self.rootDB, self.varTarget)
+        data = funDB.readDataTS(
+            rootDB=self.rootDB, rootName=self.rootName, indSub=self.indSub,
+            indSkip=self.indSkip, yrLst=self.yrLst, fieldName=self.varTarget,
+            nt=nt, ngrid=ngrid)
+        stat = funDB.readStat(rootDB=self.rootDB, fieldName=self.varTarget)
         dataNorm = (data-stat[2])/stat[3]
         if loadData is True:
             self.__target = data
         if loadStat is True:
             self.__statTarget = stat
         if loadNorm is True:
-            dataNorm[np.where(np.isnan(dataNorm))] = 0
             self.__normTarget = dataNorm
 
-    def readInput(self, loadData=False, loadStat=True, loadNorm=True):
+    def readInput(self, *, loadData=False, loadStat=True, loadNorm=True):
         nt = len(self.time)
         ngrid = len(self.indSub)
         nvar = len(self.varInput)
@@ -165,8 +172,10 @@ class Dataset(Database):
         k = 0
         for var in self.varInputTs:
             dataTemp = funDB.readDataTS(
-                self.rootDB, self.rootName, self.indSub, self.indSkip, self.yrLst, var, nt=nt, ngrid=ngrid)
-            statTemp = funDB.readStat(self.rootDB, var)
+                rootDB=self.rootDB, rootName=self.rootName, indSub=self.indSub,
+                indSkip=self.indSkip, yrLst=self.yrLst, fieldName=var,
+                nt=nt, ngrid=ngrid)
+            statTemp = funDB.readStat(rootDB=self.rootDB, fieldName=var)
             dataNormTemp = (dataTemp-statTemp[2])/statTemp[3]
             data[:, :, k] = dataTemp
             dataNorm[:, :, k] = dataNormTemp
@@ -176,9 +185,11 @@ class Dataset(Database):
         # const
         for var in self.varInputConst:
             dataTemp = funDB.readDataConst(
-                self.rootDB, self.rootName, self.indSub, self.indSkip,
-                self.yrLst, var, ngrid=ngrid)
-            statTemp = funDB.readStat(self.rootDB, var, isConst=True)
+                rootDB=self.rootDB, rootName=self.rootName, indSub=self.indSub,
+                indSkip=self.indSkip, yrLst=self.yrLst, fieldName=var,
+                ngrid=ngrid)
+            statTemp = funDB.readStat(
+                rootDB=self.rootDB, fieldName=var, isConst=True)
             dataNormTemp = (dataTemp-statTemp[2])/statTemp[3]
             data[:, :, k] = np.repeat(np.reshape(
                 dataTemp, [ngrid, 1]), nt, axis=1)
