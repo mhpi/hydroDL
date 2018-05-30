@@ -137,7 +137,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
         if iIter % nIterEpoch == 0:
             if iEpoch % saveEpoch == 0:
                 modelFile = os.path.join(outFolder, 'ep'+str(iEpoch)+'.pt')
-                model.save_state_dict(modelFile)
+                torch.save(model,modelFile)
             with open(runFile, 'w') as myfile:
                 myfile.write(str(lossEpoch/nIterEpoch)+'\n')
             print('Epoch {} Loss {:.3f} time {:.2f}'.format(
