@@ -55,7 +55,7 @@ nbatch = opt.nbatch
 
 model = classLSTM.LSTMModel(
     nx=nx, ny=ny, hiddenSize=opt.hiddenSize)
-model.zero_grad()
+#model.zero_grad()
 if torch.cuda.is_available():
     model = model.cuda(opt.gpu)
 
@@ -87,9 +87,9 @@ lossEpoch = 0
 # timeIter = time.time()
 timeEpoch = time.time()
 rf = open(runFile, 'w')
-
 rf.truncate()
 rf.close
+
 for iIter in range(1, nEpoch*nIterEpoch+1):
     # random a piece of time series
     iGrid = np.random.randint(0, ngrid, [nbatch])
@@ -108,6 +108,8 @@ for iIter in range(1, nEpoch*nIterEpoch+1):
         xTrain = xTrain.cuda(opt.gpu)
         yTrain = yTrain.cuda(opt.gpu)
 
+    model.zero_grad()
+    model.hidden = model.init_hidden()
     yP = model(xTrain)
     loc0 = yTrain != yTrain
     loc1 = yTrain == yTrain    
@@ -116,11 +118,10 @@ for iIter in range(1, nEpoch*nIterEpoch+1):
     yT[loc1] = yTrain[loc1]
     yT = yT.detach()
 
-    optim.zero_grad()
     loss = crit(yP, yT)
     loss.backward()
     optim.step()
-    # print('Epoch {} Iter {} Loss {:.3f} time {:.2f}'.format(iEpoch, iIter, loss.data[0]),time.time()-timeIter)
+    # print('Epoch {} Iter {} Loss {:.3f} time {:.2f}'.format(iEpoch, iIter, loss.item(),time.time()-timeIter))
     # timeIter = time.time()
     lossEpoch = lossEpoch+loss.item()
 
@@ -133,6 +134,7 @@ for iIter in range(1, nEpoch*nIterEpoch+1):
         yTarget = torch.from_numpy(y).float()
         xTest = xTest.cuda(0)
         yTarget = yTarget.cuda(0)
+        model.zero_grad()
         yTest = model(xTest)
         loc0 = yTarget != yTarget
         yTarget[loc0] = yTest[loc0]
@@ -145,6 +147,4 @@ for iIter in range(1, nEpoch*nIterEpoch+1):
         lossEpoch = 0
         timeEpoch = time.time()
         iEpoch = iEpoch+1
-
-
 rf.close()

@@ -47,6 +47,11 @@ class LSTMModel(torch.nn.Module):
         self.lstm = torch.nn.LSTM(nx, hiddenSize, nLayer)
         self.dropout = torch.nn.Dropout(dr)
         self.linear = torch.nn.Linear(hiddenSize, ny)
+        self.hidden = self.init_hidden()
+
+    def init_hidden(self):
+        return (torch.zeros(1, 1, self.hiddenSize),
+                torch.zeros(1, 1, self.hiddenSize))
 
     def forward(self, x):
         if torch.cuda.is_available():
