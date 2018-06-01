@@ -33,8 +33,8 @@ class optLSTM(collections.OrderedDict):
                         self[key] = type(self[key])(kw[key])
                     except:
                         print('skiped '+key+': wrong type')
-            else:
-                print('skiped '+key+': not in argument dict')
+                else:
+                    print('skiped '+key+': not in argument dict')
 
 
 class LSTMModel(torch.nn.Module):

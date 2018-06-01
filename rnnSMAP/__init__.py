@@ -2,7 +2,7 @@ import os
 import socket
 import collections
 
-__all__ = ['classDB']
+__all__ = ['classDB','funDB','classLSTM','funLSTM','kPath']
 
 print('load rnnSMAP')
 

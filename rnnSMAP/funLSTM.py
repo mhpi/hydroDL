@@ -2,6 +2,7 @@ import os
 import torch
 import time
 import numpy as np
+import pandas as pd
 from argparse import Namespace
 
 from . import classLSTM
@@ -51,6 +52,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     if not os.path.isdir(outFolder):
         os.mkdir(outFolder)
     saveOptLSTM(outFolder, optDict)
+    runFile = os.path.join(outFolder, 'runFile.csv')
 
     #############################################
     # load data
@@ -94,15 +96,15 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     # Train Model
     #############################################
     nEpoch = opt.nEpoch
-    nIterEpoch = int(np.ceil(np.log(0.01)/np.log(1-nbatch*rho/ngrid/nt)))
+    nIterEpoch = np.ceil(np.log(0.01)/np.log(1-nbatch*rho/ngrid/nt))
+    nIterEpoch = nIterEpoch.astype(int)
     saveEpoch = opt.saveEpoch
-
-    runFile = os.path.join(outFolder, 'runFile.csv')
 
     iEpoch = 1
     lossEpoch = 0
     # timeIter = time.time()
     timeEpoch = time.time()
+    rf = open(runFile, 'a+')
     for iIter in range(1, nEpoch*nIterEpoch+1):
         # random a piece of time series
         iGrid = np.random.randint(0, ngrid, [nbatch])
@@ -115,8 +117,8 @@ def trainLSTM(optDict: classLSTM.optLSTM):
             yTrain[:, k:k+1, :] = torch.from_numpy(np.swapaxes(temp, 1, 0))
 
         if torch.cuda.is_available():
-            xTrain = xTrain.cuda()
-            yTrain = yTrain.cuda()
+            xTrain = xTrain.cuda(opt.gpu)
+            yTrain = yTrain.cuda(opt.gpu)
 
         yP = model(xTrain)
         loc0 = yTrain != yTrain
@@ -132,16 +134,56 @@ def trainLSTM(optDict: classLSTM.optLSTM):
         optim.step()
         # print('Epoch {} Iter {} Loss {:.3f} time {:.2f}'.format(iEpoch, iIter, loss.data[0]),time.time()-timeIter)
         # timeIter = time.time()
-        lossEpoch = lossEpoch+loss.data[0]
+        lossEpoch = lossEpoch+loss.item()
 
         if iIter % nIterEpoch == 0:
             if iEpoch % saveEpoch == 0:
                 modelFile = os.path.join(outFolder, 'ep'+str(iEpoch)+'.pt')
-                torch.save(model,modelFile)
-            with open(runFile, 'w') as myfile:
-                myfile.write(str(lossEpoch/nIterEpoch)+'\n')
+                torch.save(model, modelFile)
+            _ = rf.write(str(lossEpoch/nIterEpoch)+'\n')
             print('Epoch {} Loss {:.3f} time {:.2f}'.format(
                 iEpoch, lossEpoch/nIterEpoch, time.time()-timeEpoch))
             lossEpoch = 0
             timeEpoch = time.time()
             iEpoch = iEpoch+1
+    rf.close()
+
+
+def testLSTM(*, out, rootOut, test, syr, eyr,
+             epoch=None, gpu=0):
+    outFolder = os.path.join(rootOut, out)
+    optDict = loadOptLSTM(outFolder)
+    opt = Namespace(**optDict)
+    if epoch == None:
+        epoch = opt.nEpoch
+
+    #############################################
+    # Load Model
+    #############################################
+    modelFile = os.path.join(outFolder, 'ep'+str(epoch)+'.pt')
+    model = torch.load(modelFile)
+
+    #############################################
+    # load data
+    #############################################
+    dataset = classDB.Dataset(
+        rootDB=opt.rootDB, subsetName=test,
+        yrLst=np.arange(syr, eyr+1),
+        var=(opt.var, opt.varC))
+    dataset.readInput(loadNorm=True)
+    x = dataset.normInput
+    xTest = torch.from_numpy(x).float()
+    if torch.cuda.is_available():
+        xTest = xTest.cuda(gpu)
+
+    #############################################
+    # forward model and save prediction
+    #############################################
+    predName = 'test_{}_{}_{}_ep{}.csv'.format(
+        test, str(syr), str(eyr), str(epoch))
+    predFile = os.path.join(outFolder, predName)
+
+    yP = model(xTest)
+    yPout = yP.detach().cpu().numpy().squeeze().transpose()
+    print('saving '+predName)
+    pd.DataFrame(yPout).to_csv(predFile, header=False, index=False)

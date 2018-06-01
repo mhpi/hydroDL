@@ -7,6 +7,7 @@ import datetime as dt
 from . import funDB
 import time
 
+
 class Database(object):
     r"""Base class Database SMAP
 
@@ -62,15 +63,13 @@ class Dataset(Database):
     Arguments:
     """
 
-    def __init__(self, *, rootDB, subsetName,
-                 yrLst, var=(None, None), targetName='SMAP_AM'):
+    def __init__(self, *, rootDB, subsetName, yrLst,
+                 var=('varConstLst_Noah', 'varConstLst_Noah'),
+                 targetName='SMAP_AM'):
         super().__init__(rootDB, subsetName)
         self.__yrLst = yrLst
-        if yrLst is not None:
-            self.__time = funDB.readDBtime(
-                rootDB=self.rootDB, rootName=self.rootName, yrLst=yrLst)
-        else:
-            self.__time = None
+        self.__time = funDB.readDBtime(
+            rootDB=self.rootDB, rootName=self.rootName, yrLst=yrLst)
 
         # input data
         self.__input = None

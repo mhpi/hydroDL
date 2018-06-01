@@ -6,6 +6,8 @@ import pandas as pd
 import datetime as dt
 import time
 import rnnSMAP 
+from . import funLSTM
+from . import classLSTM
 
 
 def readDBinfo(*,rootDB, subsetName):
@@ -71,7 +73,7 @@ def readDataTS(*,rootDB, rootName, indSub, indSkip, yrLst, fieldName,
     return data
 
 
-def readDataConst(rootDB, rootName, indSub, indSkip, yrLst, fieldName, ngrid=-1):
+def readDataConst(*,rootDB, rootName, indSub, indSkip, yrLst, fieldName, ngrid=-1):
     if ngrid == -1:
         ngrid = len(indSub)
 
@@ -83,7 +85,7 @@ def readDataConst(rootDB, rootName, indSub, indSkip, yrLst, fieldName, ngrid=-1)
     return data
 
 
-def readStat(rootDB, fieldName, isConst=False):
+def readStat(*,rootDB, fieldName, isConst=False):
     if isConst is False:
         statFile = os.path.join(rootDB, 'Statistics', fieldName+'_stat.csv')
     else:
@@ -91,3 +93,10 @@ def readStat(rootDB, fieldName, isConst=False):
                                 'const_'+fieldName+'_stat.csv')
     stat = pd.read_csv(statFile, dtype=np.float, header=None).values.flatten()
     return stat
+
+def readPred(*,rootOut,outName,test,yrLst,epoch=None):
+    outFolder=os.path.join(rootOut,outName)
+    optTrain=funLSTM.loadOptLSTM(outFolder)
+    rootDB=optTrain['rootDB']
+
+
