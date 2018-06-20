@@ -33,16 +33,16 @@ def loadOptLSTM(outFolder):
 def saveOptLSTM(outFolder, opt: classLSTM.optLSTM):
     optFile = os.path.join(outFolder, 'opt.txt')
     if os.path.isfile(optFile):
-        print('Error: cannot overwrite existed optFile. Delete manually.')
-    else:
-        with open(optFile, 'w') as ff:
-            i = 0
-            for key in opt:
-                if i != len(opt):
-                    ff.write(key+': '+str(opt[key])+'\n')
-                else:
-                    ff.write(key+': '+str(opt[key]))
-                i = i+1
+        print('Warning: overwriting existed optFile. Delete manually.')
+
+    with open(optFile, 'w') as ff:
+        i = 0
+        for key in opt:
+            if i != len(opt):
+                ff.write(key+': '+str(opt[key])+'\n')
+            else:
+                ff.write(key+': '+str(opt[key]))
+            i = i+1
 
 
 def trainLSTM(optDict: classLSTM.optLSTM):
@@ -76,8 +76,12 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     # Create Model
     #############################################
 
-    model = classLSTM.LSTMModel(
-        nx=nx, ny=ny, hiddenSize=opt.hiddenSize)
+    # model = classLSTM.modelLSTM(
+    #     nx=nx, ny=ny, hiddenSize=opt.hiddenSize,gpu=opt.gpu)
+    # model = classLSTM.modelLSTMcell(
+    #     nx=nx, ny=ny, hiddenSize=opt.hiddenSize, gpu=opt.gpu, dr=opt.dr)
+    model = classLSTM.modelLSTM_Kuai(
+        nx=nx, ny=ny, hiddenSize=opt.hiddenSize, drMethod=opt.drMethod, gpu=opt.gpu)
     model.zero_grad()
     if torch.cuda.is_available():
         model = model.cuda(opt.gpu)
@@ -102,10 +106,11 @@ def trainLSTM(optDict: classLSTM.optLSTM):
 
     iEpoch = 1
     lossEpoch = 0
-    # timeIter = time.time()
     timeEpoch = time.time()
     rf = open(runFile, 'a+')
     for iIter in range(1, nEpoch*nIterEpoch+1):
+        #############################################
+        # Training iteration
         # random a piece of time series
         iGrid = np.random.randint(0, ngrid, [nbatch])
         iT = np.random.randint(0, nt-rho, [nbatch])
@@ -123,19 +128,20 @@ def trainLSTM(optDict: classLSTM.optLSTM):
         yP = model(xTrain)
         loc0 = yTrain != yTrain
         loc1 = yTrain == yTrain
-        yT = torch.empty(rho, nbatch, 1).cuda()
+        yT = torch.empty(rho, nbatch, 1).cuda(opt.gpu)
         yT[loc0] = yP[loc0]
         yT[loc1] = yTrain[loc1]
         yT = yT.detach()
 
-        optim.zero_grad()
+        # optim.zero_grad()
+        model.zero_grad()
         loss = crit(yP, yT)
         loss.backward()
         optim.step()
-        # print('Epoch {} Iter {} Loss {:.3f} time {:.2f}'.format(iEpoch, iIter, loss.data[0]),time.time()-timeIter)
-        # timeIter = time.time()
         lossEpoch = lossEpoch+loss.item()
 
+        #############################################
+        # print result and save model
         if iIter % nIterEpoch == 0:
             if iEpoch % saveEpoch == 0:
                 modelFile = os.path.join(outFolder, 'ep'+str(iEpoch)+'.pt')
@@ -162,6 +168,8 @@ def testLSTM(*, out, rootOut, test, syr, eyr,
     #############################################
     modelFile = os.path.join(outFolder, 'ep'+str(epoch)+'.pt')
     model = torch.load(modelFile)
+    model.doDropout = False
+    # model.training = False
 
     #############################################
     # load data
@@ -172,7 +180,7 @@ def testLSTM(*, out, rootOut, test, syr, eyr,
         var=(opt.var, opt.varC))
     dataset.readInput(loadNorm=True)
     x = dataset.normInput
-    xTest = torch.from_numpy(x).float()
+    xTest = torch.from_numpy(np.swapaxes(x, 1, 0)).float()
     if torch.cuda.is_available():
         xTest = xTest.cuda(gpu)
 
@@ -184,6 +192,6 @@ def testLSTM(*, out, rootOut, test, syr, eyr,
     predFile = os.path.join(outFolder, predName)
 
     yP = model(xTest)
-    yPout = yP.detach().cpu().numpy().squeeze().transpose()
+    yPout = yP.detach().cpu().numpy().squeeze()
     print('saving '+predName)
     pd.DataFrame(yPout).to_csv(predFile, header=False, index=False)
