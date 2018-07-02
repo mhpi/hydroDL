@@ -7,7 +7,6 @@ import datetime as dt
 from . import funDB
 import time
 
-
 class Database(object):
     r"""Base class Database SMAP
 

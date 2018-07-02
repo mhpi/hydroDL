@@ -80,15 +80,25 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     #     nx=nx, ny=ny, hiddenSize=opt.hiddenSize,gpu=opt.gpu)
     # model = classLSTM.modelLSTMcell(
     #     nx=nx, ny=ny, hiddenSize=opt.hiddenSize, gpu=opt.gpu, dr=opt.dr)
-    model = classLSTM.modelLSTM_Kuai(
-        nx=nx, ny=ny, hiddenSize=opt.hiddenSize, drMethod=opt.drMethod, gpu=opt.gpu)
+    if opt.model == 'slow':
+        modelOpt = opt.modelOpt.split('+')
+        tied = 'tied' in modelOpt
+        relu = 'relu' in modelOpt
+        model = classLSTM.localLSTM_slow(
+            nx=nx, ny=ny, hiddenSize=opt.hiddenSize, drMethod=opt.drMethod, gpu=opt.gpu, doReLU=relu, doTied=tied)
+    elif opt.model == 'torch':
+        model = classLSTM.torchLSTM(nx=nx, ny=ny, hiddenSize=opt.hiddenSize)
+    elif opt.model == 'cudnn':
+        model = classLSTM.localLSTM_cuDNN(
+            nx=nx, ny=ny, hiddenSize=opt.hiddenSize, dr=opt.dr)
+
     model.zero_grad()
-    if torch.cuda.is_available():
-        model = model.cuda(opt.gpu)
+    if opt.gpu > 0:
+        model = model.cuda()
 
     crit = torch.nn.MSELoss()
-    if torch.cuda.is_available():
-        crit = crit.cuda(opt.gpu)
+    if opt.gpu > 0:
+        crit = crit.cuda()
 
     # construct model before optim will automatically make it cuda
     optim = torch.optim.Adadelta(model.parameters())
@@ -122,13 +132,13 @@ def trainLSTM(optDict: classLSTM.optLSTM):
             yTrain[:, k:k+1, :] = torch.from_numpy(np.swapaxes(temp, 1, 0))
 
         if torch.cuda.is_available():
-            xTrain = xTrain.cuda(opt.gpu)
-            yTrain = yTrain.cuda(opt.gpu)
+            xTrain = xTrain.cuda()
+            yTrain = yTrain.cuda()
 
         yP = model(xTrain)
         loc0 = yTrain != yTrain
         loc1 = yTrain == yTrain
-        yT = torch.empty(rho, nbatch, 1).cuda(opt.gpu)
+        yT = torch.empty(rho, nbatch, 1).cuda()
         yT[loc0] = yP[loc0]
         yT[loc1] = yTrain[loc1]
         yT = yT.detach()
@@ -155,8 +165,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     rf.close()
 
 
-def testLSTM(*, out, rootOut, test, syr, eyr,
-             epoch=None, gpu=0):
+def testLSTM(*, out, rootOut, test, syr, eyr, epoch=None):
     outFolder = os.path.join(rootOut, out)
     optDict = loadOptLSTM(outFolder)
     opt = Namespace(**optDict)
@@ -169,7 +178,7 @@ def testLSTM(*, out, rootOut, test, syr, eyr,
     modelFile = os.path.join(outFolder, 'ep'+str(epoch)+'.pt')
     model = torch.load(modelFile)
     model.doDropout = False
-    # model.training = False
+    model.train = False
 
     #############################################
     # load data
@@ -182,7 +191,7 @@ def testLSTM(*, out, rootOut, test, syr, eyr,
     x = dataset.normInput
     xTest = torch.from_numpy(np.swapaxes(x, 1, 0)).float()
     if torch.cuda.is_available():
-        xTest = xTest.cuda(gpu)
+        xTest = xTest.cuda()
 
     #############################################
     # forward model and save prediction

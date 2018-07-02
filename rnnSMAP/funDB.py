@@ -5,10 +5,6 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 import time
-import rnnSMAP 
-from . import funLSTM
-from . import classLSTM
-
 
 def readDBinfo(*,rootDB, subsetName):
     subsetFile = os.path.join(rootDB, 'Subset', subsetName+'.csv')
@@ -93,10 +89,5 @@ def readStat(*,rootDB, fieldName, isConst=False):
                                 'const_'+fieldName+'_stat.csv')
     stat = pd.read_csv(statFile, dtype=np.float, header=None).values.flatten()
     return stat
-
-def readPred(*,rootOut,outName,test,yrLst,epoch=None):
-    outFolder=os.path.join(rootOut,outName)
-    optTrain=funLSTM.loadOptLSTM(outFolder)
-    rootDB=optTrain['rootDB']
 
 
