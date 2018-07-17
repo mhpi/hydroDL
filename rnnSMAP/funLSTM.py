@@ -9,7 +9,6 @@ from . import classLSTM
 from . import classDB
 from . import kPath
 
-
 def loadOptLSTM(outFolder):
     optFile = os.path.join(outFolder, 'opt.txt')
     optTemp = dict()  # type: dict
@@ -73,32 +72,31 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     nbatch = opt.nbatch
 
     #############################################
-    # Create Model
+    # Model
     #############################################
 
-    # model = classLSTM.modelLSTM(
-    #     nx=nx, ny=ny, hiddenSize=opt.hiddenSize,gpu=opt.gpu)
-    # model = classLSTM.modelLSTMcell(
-    #     nx=nx, ny=ny, hiddenSize=opt.hiddenSize, gpu=opt.gpu, dr=opt.dr)
+    nOut = ny if opt.sigma != 1 else ny+1
+    modelOpt = opt.modelOpt.split('+')
+    tied = 'tied' in modelOpt
+    relu = 'relu' in modelOpt
     if opt.model == 'slow':
-        modelOpt = opt.modelOpt.split('+')
-        tied = 'tied' in modelOpt
-        relu = 'relu' in modelOpt
         model = classLSTM.localLSTM_slow(
-            nx=nx, ny=ny, hiddenSize=opt.hiddenSize, drMethod=opt.drMethod, gpu=opt.gpu, doReLU=relu, doTied=tied)
+            nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, drMethod=opt.drMethod, gpu=opt.gpu, doReLU=relu, doTied=tied)
     elif opt.model == 'torch':
-        model = classLSTM.torchLSTM(nx=nx, ny=ny, hiddenSize=opt.hiddenSize)
+        model = classLSTM.torchLSTM_cell(
+            nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr, doReLU=relu)
     elif opt.model == 'cudnn':
         model = classLSTM.localLSTM_cuDNN(
-            nx=nx, ny=ny, hiddenSize=opt.hiddenSize, dr=opt.dr)
+            nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr)
 
     model.zero_grad()
     if opt.gpu > 0:
         model = model.cuda()
 
-    crit = torch.nn.MSELoss()
+    crit = classLSTM.sigmaLoss() if opt.sigma == 1 else torch.nn.MSELoss()
     if opt.gpu > 0:
         crit = crit.cuda()
+    model.train()
 
     # construct model before optim will automatically make it cuda
     optim = torch.optim.Adadelta(model.parameters())
@@ -107,7 +105,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     yTrain = torch.zeros([rho, nbatch, ny], requires_grad=False)
 
     #############################################
-    # Train Model
+    # Training
     #############################################
     nEpoch = opt.nEpoch
     nIterEpoch = np.ceil(np.log(0.01)/np.log(1-nbatch*rho/ngrid/nt))
@@ -138,8 +136,11 @@ def trainLSTM(optDict: classLSTM.optLSTM):
         yP = model(xTrain)
         loc0 = yTrain != yTrain
         loc1 = yTrain == yTrain
-        yT = torch.empty(rho, nbatch, 1).cuda()
-        yT[loc0] = yP[loc0]
+        yT = torch.empty(rho, nbatch, 1)
+        if opt.gpu > 0:
+            yT = yT.cuda()
+        yPtemp = yP if opt.sigma != 1 else yP[:, :, 0:1]
+        yT[loc0] = yPtemp[loc0]
         yT[loc1] = yTrain[loc1]
         yT = yT.detach()
 
@@ -165,20 +166,12 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     rf.close()
 
 
-def testLSTM(*, out, rootOut, test, syr, eyr, epoch=None):
+def testLSTM(*, out, rootOut, test, syr, eyr, epoch=None, drMC=0):
     outFolder = os.path.join(rootOut, out)
     optDict = loadOptLSTM(outFolder)
     opt = Namespace(**optDict)
     if epoch == None:
         epoch = opt.nEpoch
-
-    #############################################
-    # Load Model
-    #############################################
-    modelFile = os.path.join(outFolder, 'ep'+str(epoch)+'.pt')
-    model = torch.load(modelFile)
-    model.doDropout = False
-    model.train = False
 
     #############################################
     # load data
@@ -190,17 +183,61 @@ def testLSTM(*, out, rootOut, test, syr, eyr, epoch=None):
     dataset.readInput(loadNorm=True)
     x = dataset.normInput
     xTest = torch.from_numpy(np.swapaxes(x, 1, 0)).float()
-    if torch.cuda.is_available():
+    if opt.gpu > 0:
         xTest = xTest.cuda()
 
     #############################################
-    # forward model and save prediction
+    # Load Model
     #############################################
-    predName = 'test_{}_{}_{}_ep{}.csv'.format(
-        test, str(syr), str(eyr), str(epoch))
-    predFile = os.path.join(outFolder, predName)
+    modelFile = os.path.join(outFolder, 'ep'+str(epoch)+'.pt')
+    model = torch.load(modelFile)
+    model.train(mode=False)
 
-    yP = model(xTest)
-    yPout = yP.detach().cpu().numpy().squeeze()
-    print('saving '+predName)
-    pd.DataFrame(yPout).to_csv(predFile, header=False, index=False)
+    #############################################
+    # save prediction
+    #############################################
+    if drMC == 0:
+        yP = model(xTest)
+        if opt.sigma == 0:
+            yOut = yP.detach().cpu().numpy().squeeze()
+        else:
+            yOut = yP[:, :, 0].detach().cpu().numpy().squeeze()
+            sOut = yP[:, :, 1].detach().cpu().numpy().squeeze()
+
+            sigmaName = 'testSigma_{}_{}_{}_ep{}.csv'.format(
+                test, str(syr), str(eyr), str(epoch))
+            sigmaFile = os.path.join(outFolder, sigmaName)
+            print('saving '+sigmaName)
+            pd.DataFrame(sOut).to_csv(sigmaFile, header=False, index=False)
+
+        predName = 'test_{}_{}_{}_ep{}.csv'.format(
+            test, str(syr), str(eyr), str(epoch))
+        predFile = os.path.join(outFolder, predName)
+        print('saving '+predName)
+        pd.DataFrame(yOut).to_csv(predFile, header=False, index=False)
+
+    if drMC > 0:
+        model.train()
+        mcName = 'test_{}_{}_{}_ep{}_drM{}'.format(
+            test, str(syr), str(eyr), str(epoch), str(drMC))
+        mcFolder = os.path.join(outFolder, mcName)
+        if not os.path.isdir(mcFolder):
+            os.mkdir(mcFolder)
+
+        for kk in range(0, drMC):
+            yP = model(xTest)
+            if opt.sigma == 0:
+                yOut = yP.detach().cpu().numpy().squeeze()
+            else:
+                yOut = yP[:, :, 0].detach().cpu().numpy().squeeze()
+                sOut = yP[:, :, 1].detach().cpu().numpy().squeeze()
+
+                sigmaName = 'drSigma_{}.csv'.format(str(kk))
+                sigmaFile = os.path.join(mcFolder, sigmaName)
+                print('saving '+sigmaName)
+                pd.DataFrame(sOut).to_csv(sigmaFile, header=False, index=False)
+
+            predName = 'drMC_{}.csv'.format(str(kk))
+            predFile = os.path.join(mcFolder, predName)
+            print('saving '+predName)
+            pd.DataFrame(yOut).to_csv(predFile, header=False, index=False)

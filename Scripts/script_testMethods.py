@@ -68,8 +68,6 @@ opt['modelOpt'] = mopLst[k]
 out = opt['out']
 rootOut = rnnSMAP.kPath['OutSMAP_L3_NA']
 testName = 'CONUSv4f1'
-syr = 2016
-eyr = 2016
 rnnSMAP.funLSTM.testLSTM(
     out=out, rootOut=rootOut, test=testName,
     syr=2016, eyr=2017)

@@ -18,16 +18,17 @@ def initPath():
         dirOut = os.path.join(
             os.path.sep, 'mnt', 'sdc', 'rnnSMAP', 'Output_SMAPgrid')
     kPath = collections.OrderedDict(
-        DBSMAP_L3_CONUS=os.path.join(dirDB, 'Daily_L3_CONUS'),
-        DBSMAP_L3_Global=os.path.join(dirDB, 'Daily_L3'),
-        DBSMAP_L3_NA=os.path.join(dirDB, 'Daily_L3_NA'),
-        DBSMAP_L4_CONUS=os.path.join(dirDB, 'Daily_L4_CONUS'),
-        DBSMAP_L4_NA=os.path.join(dirDB, 'Daily_L4_NA'),
-        OutSMAP_L3_CONUS=os.path.join(dirOut, 'L3_CONUS'),
-        OutSMAP_L3_Global=os.path.join(dirOut, 'L3_Global'),
-        OutSMAP_L3_NA=os.path.join(dirOut, 'L3_NA'),
-        OutSMAP_L4_CONUS=os.path.join(dirOut, 'L4_CONUS'),
-        OutSMAP_L4_NA=os.path.join(dirOut, 'L4_NA'),
+        DB_L3_CONUS=os.path.join(dirDB, 'Daily_L3_CONUS'),
+        DB_L3_Global=os.path.join(dirDB, 'Daily_L3'),
+        DB_L3_NA=os.path.join(dirDB, 'Daily_L3_NA'),
+        DB_L4_CONUS=os.path.join(dirDB, 'Daily_L4_CONUS'),
+        DB_L4_NA=os.path.join(dirDB, 'Daily_L4_NA'),
+        Out_L3_CONUS=os.path.join(dirOut, 'L3_CONUS'),
+        Out_L3_Global=os.path.join(dirOut, 'L3_Global'),
+        Out_L3_NA=os.path.join(dirOut, 'L3_NA'),        
+        Out_L4_CONUS=os.path.join(dirOut, 'L4_CONUS'),
+        Out_L4_NA=os.path.join(dirOut, 'L4_NA'),
+        OutSigma_L3_NA=os.path.join(dirOut, 'L3_NA_sigma'),
     )
     return kPath
 

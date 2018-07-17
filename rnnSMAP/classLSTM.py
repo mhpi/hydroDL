@@ -1,5 +1,6 @@
 
 import collections
+import argparse
 import rnnSMAP
 import torch
 from . import kuaiLSTM
@@ -8,8 +9,8 @@ from . import kuaiLSTM
 class optLSTM(collections.OrderedDict):
     def __init__(self, **kw):
         # dataset
-        self['rootDB'] = rnnSMAP.kPath['DBSMAP_L3_Global']
-        self['rootOut'] = rnnSMAP.kPath['OutSMAP_L3_Global']
+        self['rootDB'] = rnnSMAP.kPath['DB_L3_Global']
+        self['rootOut'] = rnnSMAP.kPath['Out_L3_Global']
         self['gpu'] = 1
         self['out'] = 'test'
         self['train'] = 'Globalv8f1'
@@ -20,11 +21,11 @@ class optLSTM(collections.OrderedDict):
         self['eyr'] = 2016
         self['resume'] = 0
         # model
+        self['model'] = 'cudnn'
+        self['modelOpt'] = 'tied+relu'
         self['hiddenSize'] = 256
         self['dr'] = 0.5
         self['drMethod'] = 'drX+drH+drW+drC'
-        self['model'] = 'local'
-        self['modelOpt'] = 'tied'
         self['rho'] = 30
         self['rhoL'] = 30
         self['rhoP'] = 0
@@ -32,6 +33,7 @@ class optLSTM(collections.OrderedDict):
         self['nEpoch'] = 500
         self['saveEpoch'] = 100
         self['addFlag'] = 0
+        self['sigma'] = 0
         if kw.keys() is not None:
             for key in kw:
                 if key in self:
@@ -41,6 +43,62 @@ class optLSTM(collections.OrderedDict):
                         print('skiped '+key+': wrong type')
                 else:
                     print('skiped '+key+': not in argument dict')
+
+    def checkOpt(self):
+        if self['model'] == 'cudnn':
+            self['modelOpt'] = 'tied+relu'
+            self['drMethod'] = 'drW'
+
+    def toParser(self):
+        parser = argparse.ArgumentParser()
+        for key, value in self.items():
+            parser.add_argument('--'+key, dest=key,
+                                default=value, type=type(value))
+        return parser
+
+    def toCmdLine(self):
+        cmdStr=''
+        for key, value in self.items():
+            cmdStr=cmdStr+' --'+key+' '+str(value)
+        return cmdStr
+
+    def fromParser(self, parser):
+        args = parser.parse_args()
+        for key, value in self.items():
+            self[key] = getattr(args, key)
+
+
+def initLSTMstate(ngrid, hiddenSize, gpu, nDim=3):
+    if nDim == 3:
+        h0 = torch.zeros(
+            1, ngrid, hiddenSize, requires_grad=True)
+        c0 = torch.zeros(
+            1, ngrid, hiddenSize, requires_grad=True)
+    if nDim == 2:
+        h0 = torch.zeros(
+            ngrid, hiddenSize, requires_grad=True)
+        c0 = torch.zeros(
+            ngrid, hiddenSize, requires_grad=True)
+    if gpu > 0:
+        h0 = h0.cuda()
+        c0 = c0.cuda()
+    return h0, c0
+
+
+class sigmaLoss(torch.nn.Module):
+    def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
+        super(sigmaLoss, self).__init__()
+        self.reduction = 'elementwise_mean'
+
+    def forward(self, input, target):
+        p = input[:, :, 0]
+        # s = input[-1, :, 1]
+        s = input[:, :, 1]
+        t = target[:, :, 0]
+        # loss = torch.mean(torch.exp(-s).mul(torch.mul(p-t, p-t))/2, dim=0)+s/2
+        loss = torch.mean(torch.exp(-s).mul(torch.mul(p-t, p-t))/2+s/2, dim=0)
+        lossMean = torch.mean(loss)
+        return lossMean
 
 
 class torchLSTM(torch.nn.Module):
@@ -66,19 +124,23 @@ class torchLSTM(torch.nn.Module):
 
 
 class torchLSTM_cell(torch.nn.Module):
-    def __init__(self, *, nx, ny, hiddenSize, dr=0.5, gpu=1):
-        super(modelLSTMcell, self).__init__()
+    def __init__(self, *, nx, ny, hiddenSize, dr=0.5, gpu=1, doReLU=True):
+        super(torchLSTM_cell, self).__init__()
         self.nx = nx
         self.ny = ny
         self.hiddenSize = hiddenSize
-        self.nLayer = 1
-        self.lstmcell = torch.nn.LSTMCell(nx, hiddenSize)
-        self.linear = torch.nn.Linear(hiddenSize, ny)
         self.dr = dr
-        if self.dr > 0:
-            self.doDropout = True
+        self.doReLU = doReLU
+        self.gpu = gpu
+
+        if doReLU is True:
+            self.linearIn = torch.nn.Linear(nx, hiddenSize)
+            self.relu = torch.nn.ReLU()
+            inputSize = hiddenSize
         else:
-            self.doDropout = False
+            inputSize = nx
+        self.lstmcell = torch.nn.LSTMCell(inputSize, hiddenSize)
+        self.linearOut = torch.nn.Linear(hiddenSize, ny)
 
         if gpu > 0:
             self = self.cuda()
@@ -86,12 +148,9 @@ class torchLSTM_cell(torch.nn.Module):
         else:
             self.is_cuda = False
 
-    def init_mask(self, x, h):
-        self.maskX = x.bernoulli(1-self.dr).div_(1-self.dr)
-        self.maskH = h.bernoulli(1-self.dr).div_(1-self.dr)
-        self.maskX = self.maskX.detach()
-        self.maskH = self.maskH.detach()
-
+    def reset_mask(self, x, h):
+        self.maskX = kuaiLSTM.createMask(x, self.dr)
+        self.maskH = kuaiLSTM.createMask(h, self.dr)
         if self.is_cuda:
             self.maskX = self.maskX.cuda()
             self.maskH = self.maskH.cuda()
@@ -100,23 +159,29 @@ class torchLSTM_cell(torch.nn.Module):
         nt = x.size(0)
         ngrid = x.size(1)
         h0, c0 = initLSTMstate(ngrid, self.hiddenSize, self.gpu, nDim=2)
+        ht = h0
+        ct = c0
+
+        if self.doReLU is True:
+            x0 = self.linearIn(x)
+            x0 = self.relu(x0)
+        else:
+            x0 = x
 
         output = []
-        if self.doDropout:
-            self.init_mask(x[0], h0)
+        if self.dr > 0 and self.training is True:
+            self.reset_mask(x0[0], h0)
 
         for i in range(0, nt):
-            x0 = x[i]
-            if self.doDropout:
-                x0 = x0.mul(self.maskX)
-                # h0 = h0.mul(self.maskH)
-            ht, ct = self.lstmcell(x0, (h0, c0))
-            h0 = ht
-            c0 = ct
+            xt = x0[i]
+            if self.dr > 0 and self.training is True:
+                xt = kuaiLSTM.dropMask.apply(xt, self.maskX, True)
+                ht = kuaiLSTM.dropMask.apply(ht, self.maskH, True)
+            ht, ct = self.lstmcell(xt, (ht, ct))
             output.append(ht)
         outView = torch.cat(output, 0).view(nt, *output[0].size())
 
-        out = self.linear(outView)
+        out = self.linearOut(outView)
         return out
 
 
@@ -135,10 +200,8 @@ class localLSTM_cuDNN(torch.nn.Module):
             inputSize = hiddenSize
         else:
             inputSize = nx
-
         self.lstm = kuaiLSTM.cudnnLSTM(
             inputSize=inputSize, hiddenSize=hiddenSize, dr=dr)
-
         self.linearOut = torch.nn.Linear(hiddenSize, ny)
         self.is_cuda = True
         self.gpu = 1
@@ -207,29 +270,3 @@ class localLSTM_slow(torch.nn.Module):
 
         out = self.linearOut(outView)
         return out
-
-
-def initLSTMstate(ngrid, hiddenSize, gpu, nDim=3):
-    if nDim == 3:
-        if gpu > 0:
-            h0 = torch.zeros(
-                1, ngrid, hiddenSize, requires_grad=True).cuda()
-            c0 = torch.zeros(
-                1, ngrid, hiddenSize, requires_grad=True).cuda()
-        else:
-            h0 = torch.zeros(
-                1, ngrid, hiddenSize, requires_grad=True)
-            c0 = torch.zeros(
-                1, ngrid, hiddenSize, requires_grad=True)
-    if nDim == 2:
-        if gpu > 0:
-            h0 = torch.zeros(
-                ngrid, hiddenSize, requires_grad=True).cuda()
-            c0 = torch.zeros(
-                ngrid, hiddenSize, requires_grad=True).cuda()
-        else:
-            h0 = torch.zeros(
-                ngrid, hiddenSize, requires_grad=True)
-            c0 = torch.zeros(
-                ngrid, hiddenSize, requires_grad=True)
-    return h0, c0

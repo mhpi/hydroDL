@@ -176,8 +176,8 @@ class slowLSTMcell_tied(torch.nn.Module):
     """
     """
 
-    def __init__(self, *, inputSize, hiddenSize, train=True,
-                 dr=0.5, drMethod='gal+sem', gpu=0):
+    def __init__(self, *, inputSize, hiddenSize, mode='train',
+                 dr=0.5, drMethod='drX+drW+drC', gpu=1):
         super(tiedLSTMcell, self).__init__()
 
         self.inputSize = inputSize
@@ -191,9 +191,16 @@ class slowLSTMcell_tied(torch.nn.Module):
 
         self.drMethod = drMethod.split('+')
         self.gpu = gpu
-        self.train = train
+        self.mode = mode
+        if mode == 'train':
+            self.train(mode=True)
+        elif mode == 'test':
+            self.train(mode=False)
+        elif mode == 'drMC':
+            self.train(mode=False)
+
         if gpu >= 0:
-            self = self.cuda(gpu)
+            self = self.cuda()
             self.is_cuda = True
         else:
             self.is_cuda = False
@@ -204,7 +211,7 @@ class slowLSTMcell_tied(torch.nn.Module):
         for weight in self.parameters():
             weight.data.uniform_(-stdv, stdv)
 
-    def init_mask(self, x, h, c):
+    def reset_mask(self, x, h, c):
         self.maskX = createMask(x, self.dr)
         self.maskH = createMask(h, self.dr)
         self.maskC = createMask(c, self.dr)
@@ -213,20 +220,20 @@ class slowLSTMcell_tied(torch.nn.Module):
 
     def forward(self, x, hidden):
         nbatch = x.size(0)
-        doDrop = self.train and self.dr > 0.0
-
         h0, c0 = hidden
 
-        if doDrop:
-            self.init_mask(x, h0, c0)
+        if self.dr > 0 and self.training is True:
+            self.reset_mask()
 
         if doDrop and 'drH' in self.drMethod:
             h0 = h0.mul(self.maskH)
+            self.w_ih = dropMask.apply(self.w_ih)
         if doDrop and 'drX' in self.drMethod:
             x = x.mul(self.maskX)
 
         if doDrop and 'drW' in self.drMethod:
-            w_ih = self.w_ih.mul(self.maskW_ih)
+            # w_ih = self.w_ih.mul(self.maskW_ih)
+            self.w_ih = dropMask.apply(self.w_ih)
             w_hh = self.w_hh.mul(self.maskW_hh)
         else:
             w_ih = self.w_ih
@@ -303,15 +310,11 @@ class cudnnLSTM(torch.nn.Module):
 
         # cuDNN backend - disabled flat weight
         handle = torch.backends.cudnn.get_handle()
-
         if self.dr > 0 and self.training is True:
             self.reset_mask()
             weight = [dropMask.apply(self.w_ih, self.maskW_ih, True),
                       dropMask.apply(self.w_hh, self.maskW_hh, True),
                       self.b_ih, self.b_hh]
-            # weight = [self.w_ih.mul(self.maskW_ih),
-            #           self.w_hh.mul(self.maskW_hh),
-            #           self.b_ih, self.b_hh]
         else:
             weight = [self.w_ih, self.w_hh, self.b_ih, self.b_hh]
 
