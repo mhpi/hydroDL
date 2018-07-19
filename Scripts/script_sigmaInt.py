@@ -1,10 +1,9 @@
-import os
 
+import os
 import rnnSMAP
 import numpy as np
 import pandas as pd
 import torch
-import argparse
 
 import imp
 imp.reload(rnnSMAP)
@@ -26,7 +25,7 @@ for trainName in trainLst:
     print(trainName)
     opt['train'] = trainName
     opt['out'] = trainName+'_y15_soilM'
-    testName='CONUSv8f1'
+    testName='CONUSv4f1'
     # rnnSMAP.funLSTM.trainLSTM(opt)
 
     out = opt['out']
@@ -34,8 +33,8 @@ for trainName in trainLst:
 
     rnnSMAP.funLSTM.testLSTM(
         out=out, rootOut=rootOut, test=testName,
-        syr=2016, eyr=2017,drMC=0)
+        syr=2016, eyr=2017,drMC=100)
 
     rnnSMAP.funLSTM.testLSTM(
         out=out, rootOut=rootOut, test=testName,
-        syr=2015, eyr=2015,drMC=0)
+        syr=2015, eyr=2015,drMC=100)

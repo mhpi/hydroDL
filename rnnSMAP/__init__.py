@@ -52,3 +52,4 @@ def reload():
     imp.reload(classLSTM)
     imp.reload(funLSTM)
     imp.reload(kuaiLSTM)
+

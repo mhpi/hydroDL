@@ -7,7 +7,9 @@ from argparse import Namespace
 
 from . import classLSTM
 from . import classDB
+from . import funDB
 from . import kPath
+
 
 def loadOptLSTM(outFolder):
     optFile = os.path.join(outFolder, 'opt.txt')
@@ -56,15 +58,13 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     #############################################
     # load data
     #############################################
-    dataset = classDB.Dataset(
+    dataset = classDB.DatasetLSTM(
         rootDB=opt.rootDB, subsetName=opt.train,
         yrLst=np.arange(opt.syr, opt.eyr+1),
         var=(opt.var, opt.varC), targetName=opt.target)
-    dataset.readInput(loadNorm=True)
-    dataset.readTarget(loadNorm=True)
+    x = dataset.readInput()
+    y = dataset.readTarget()
 
-    x = dataset.normInput
-    y = dataset.normTarget
     ngrid, nt, nx = x.shape
     ny = 1
     y = np.reshape(y, [ngrid, nt, ny])
@@ -75,7 +75,11 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     # Model
     #############################################
 
-    nOut = ny if opt.sigma != 1 else ny+1
+    if opt.loss == 'mse':
+        nOut = ny
+    elif opt.loss == 'sigma':
+        nOut = ny+1
+
     modelOpt = opt.modelOpt.split('+')
     tied = 'tied' in modelOpt
     relu = 'relu' in modelOpt
@@ -89,13 +93,16 @@ def trainLSTM(optDict: classLSTM.optLSTM):
         model = classLSTM.localLSTM_cuDNN(
             nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr)
 
-    model.zero_grad()
-    if opt.gpu > 0:
-        model = model.cuda()
+    if opt.loss == 'mse':
+        crit = torch.nn.MSELoss()
+    elif opt.loss == 'sigma':
+        crit = classLSTM.sigmaLoss(prior=opt.lossPrior)
 
-    crit = classLSTM.sigmaLoss() if opt.sigma == 1 else torch.nn.MSELoss()
     if opt.gpu > 0:
         crit = crit.cuda()
+        model = model.cuda()
+
+    model.zero_grad()
     model.train()
 
     # construct model before optim will automatically make it cuda
@@ -139,7 +146,10 @@ def trainLSTM(optDict: classLSTM.optLSTM):
         yT = torch.empty(rho, nbatch, 1)
         if opt.gpu > 0:
             yT = yT.cuda()
-        yPtemp = yP if opt.sigma != 1 else yP[:, :, 0:1]
+        if opt.loss == 'mse':
+            yPtemp = yP
+        elif opt.loss == 'sigma':
+            yPtemp = yP[:, :, 0:1]
         yT[loc0] = yPtemp[loc0]
         yT[loc1] = yTrain[loc1]
         yT = yT.detach()
@@ -166,7 +176,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     rf.close()
 
 
-def testLSTM(*, out, rootOut, test, syr, eyr, epoch=None, drMC=0):
+def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
     outFolder = os.path.join(rootOut, out)
     optDict = loadOptLSTM(outFolder)
     opt = Namespace(**optDict)
@@ -176,12 +186,11 @@ def testLSTM(*, out, rootOut, test, syr, eyr, epoch=None, drMC=0):
     #############################################
     # load data
     #############################################
-    dataset = classDB.Dataset(
+    dataset = classDB.DatasetLSTM(
         rootDB=opt.rootDB, subsetName=test,
         yrLst=np.arange(syr, eyr+1),
         var=(opt.var, opt.varC))
-    dataset.readInput(loadNorm=True)
-    x = dataset.normInput
+    x = dataset.readInput()
     xTest = torch.from_numpy(np.swapaxes(x, 1, 0)).float()
     if opt.gpu > 0:
         xTest = xTest.cuda()
@@ -196,25 +205,23 @@ def testLSTM(*, out, rootOut, test, syr, eyr, epoch=None, drMC=0):
     #############################################
     # save prediction
     #############################################
-    if drMC == 0:
-        yP = model(xTest)
-        if opt.sigma == 0:
-            yOut = yP.detach().cpu().numpy().squeeze()
-        else:
-            yOut = yP[:, :, 0].detach().cpu().numpy().squeeze()
-            sOut = yP[:, :, 1].detach().cpu().numpy().squeeze()
+    if opt.loss == 'sigma':
+        yOut = yP[:, :, 0].detach().cpu().numpy().squeeze()
+        sOut = yP[:, :, 1].detach().cpu().numpy().squeeze()
 
-            sigmaName = 'testSigma_{}_{}_{}_ep{}.csv'.format(
-                test, str(syr), str(eyr), str(epoch))
-            sigmaFile = os.path.join(outFolder, sigmaName)
-            print('saving '+sigmaName)
-            pd.DataFrame(sOut).to_csv(sigmaFile, header=False, index=False)
-
-        predName = 'test_{}_{}_{}_ep{}.csv'.format(
+        sigmaName = 'testSigma_{}_{}_{}_ep{}.csv'.format(
             test, str(syr), str(eyr), str(epoch))
-        predFile = os.path.join(outFolder, predName)
-        print('saving '+predName)
-        pd.DataFrame(yOut).to_csv(predFile, header=False, index=False)
+        sigmaFile = os.path.join(outFolder, sigmaName)
+        print('saving '+sigmaFile)
+        pd.DataFrame(sOut).to_csv(sigmaFile, header=False, index=False)
+    else:
+        yOut = yP.detach().cpu().numpy().squeeze()
+
+    predName = 'test_{}_{}_{}_ep{}.csv'.format(
+        test, str(syr), str(eyr), str(epoch))
+    predFile = os.path.join(outFolder, predName)
+    print('saving '+predFile)
+    pd.DataFrame(yOut).to_csv(predFile, header=False, index=False)
 
     if drMC > 0:
         model.train()
@@ -226,18 +233,116 @@ def testLSTM(*, out, rootOut, test, syr, eyr, epoch=None, drMC=0):
 
         for kk in range(0, drMC):
             yP = model(xTest)
-            if opt.sigma == 0:
-                yOut = yP.detach().cpu().numpy().squeeze()
-            else:
+            if opt.loss == 'sigma':
                 yOut = yP[:, :, 0].detach().cpu().numpy().squeeze()
                 sOut = yP[:, :, 1].detach().cpu().numpy().squeeze()
 
                 sigmaName = 'drSigma_{}.csv'.format(str(kk))
                 sigmaFile = os.path.join(mcFolder, sigmaName)
-                print('saving '+sigmaName)
+                print('saving '+sigmaFile)
                 pd.DataFrame(sOut).to_csv(sigmaFile, header=False, index=False)
+            else:
+                yOut = yP.detach().cpu().numpy().squeeze()
 
             predName = 'drMC_{}.csv'.format(str(kk))
             predFile = os.path.join(mcFolder, predName)
-            print('saving '+predName)
+            print('saving '+predFile)
             pd.DataFrame(yOut).to_csv(predFile, header=False, index=False)
+
+
+def readPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
+    outFolder = os.path.join(rootOut, out)
+    optDict = loadOptLSTM(outFolder)
+    opt = Namespace(**optDict)
+    if epoch == None:
+        epoch = opt.nEpoch
+    stat = funDB.readStat(rootDB=opt.rootDB, fieldName=opt.target, isConst=False)
+
+    if opt.loss == 'sigma':
+        sigmaName = 'testSigma_{}_{}_{}_ep{}.csv'.format(
+            test, str(syr), str(eyr), str(epoch))
+        sigmaFile = os.path.join(outFolder, sigmaName)
+        print('reading '+sigmaFile)
+        temp = pd.read_csv(sigmaFile, dtype=np.float,
+                           header=None).values.swapaxes(1, 0)
+        dataSigma = np.sqrt(np.exp(temp))*stat[3]
+    else:
+        dataSigma = None
+
+    predName = 'test_{}_{}_{}_ep{}.csv'.format(
+        test, str(syr), str(eyr), str(epoch))
+    predFile = os.path.join(outFolder, predName)
+    print('reading '+predFile)
+    temp = pd.read_csv(predFile, dtype=np.float,
+                       header=None).values.swapaxes(1, 0)
+    dataPred = temp*stat[3]+stat[2]
+
+    ngrid, nt = dataSigma.shape
+    if drMC > 0:
+        dataPredBatch = np.empty([ngrid, nt, drMC])
+        dataSigmaBatch = np.empty([ngrid, nt, drMC])
+        mcName = 'test_{}_{}_{}_ep{}_drM{}'.format(
+            test, str(syr), str(eyr), str(epoch), str(drMC))
+        mcFolder = os.path.join(outFolder, mcName)
+
+        for kk in range(0, drMC):
+            if opt.loss == 'sigma':
+                sigmaName = 'drSigma_{}.csv'.format(str(kk))
+                sigmaFile = os.path.join(mcFolder, sigmaName)
+                print('reading '+sigmaFile)
+                temp = pd.read_csv(sigmaFile, dtype=np.float,
+                                   header=None).values.swapaxes(1, 0)
+                temp = np.sqrt(np.exp(temp))*stat[3]
+                dataSigmaBatch[:, :, kk] = temp
+
+            predName = 'drMC_{}.csv'.format(str(kk))
+            predFile = os.path.join(mcFolder, predName)
+            print('reading '+predFile)
+            temp = pd.read_csv(predFile, dtype=np.float,
+                               header=None).values.swapaxes(1, 0)
+            temp = temp*stat[3]+stat[2]
+            dataPredBatch[:, :, kk] = temp
+
+    else:
+        dataSigmaBatch = None
+        dataPredBatch = None
+
+    return (dataPred, dataSigma, dataPredBatch, dataSigmaBatch)
+
+
+def checkPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
+    outFolder = os.path.join(rootOut, out)
+    optDict = loadOptLSTM(outFolder)
+    opt = Namespace(**optDict)
+    if epoch == None:
+        epoch = opt.nEpoch
+
+    if opt.loss == 'sigma':
+        sigmaName = 'testSigma_{}_{}_{}_ep{}.csv'.format(
+            test, str(syr), str(eyr), str(epoch))
+        sigmaFile = os.path.join(outFolder, sigmaName)
+        if not os.path.isfile(sigmaFile):
+            return False
+
+    predName = 'test_{}_{}_{}_ep{}.csv'.format(
+        test, str(syr), str(eyr), str(epoch))
+    predFile = os.path.join(outFolder, predName)
+    if not os.path.isfile(predFile):
+        return False
+    
+    if drMC > 0:
+        mcName = 'test_{}_{}_{}_ep{}_drM{}'.format(
+            test, str(syr), str(eyr), str(epoch), str(drMC))
+        mcFolder = os.path.join(outFolder, mcName)
+        if opt.loss == 'sigma':
+            sigmaName = 'drSigma_{}.csv'.format(str(drMC-1))
+            sigmaFile = os.path.join(mcFolder, sigmaName)
+            if not os.path.isfile(sigmaFile):
+                return False
+
+        predName = 'drMC_{}.csv'.format(str(drMC-1))
+        predFile = os.path.join(mcFolder, predName)
+        if not os.path.isfile(predFile):
+            return False
+
+    return True

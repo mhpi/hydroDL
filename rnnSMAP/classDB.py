@@ -5,9 +5,11 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 from . import funDB
+from . import funLSTM
 import time
 
-class Database(object):
+
+class Dataset(object):
     r"""Base class Database SMAP
 
         Arguments:
@@ -15,7 +17,7 @@ class Database(object):
             subsetName:
     """
 
-    def __init__(self, rootDB, subsetName):
+    def __init__(self, rootDB, subsetName, yrLst):
         self.__rootDB = rootDB
         self.__subsetName = subsetName
         rootName, crd, indSub, indSkip = funDB.readDBinfo(
@@ -24,6 +26,10 @@ class Database(object):
         self.__indSub = indSub
         self.__indSkip = indSkip
         self.__rootName = rootName
+
+        self.__yrLst = yrLst
+        self.__time = funDB.readDBtime(
+            rootDB=self.rootDB, rootName=self.rootName, yrLst=yrLst)
 
     @property
     def rootName(self):
@@ -53,47 +59,6 @@ class Database(object):
     def nGrid(self):
         return len(self.crd)
 
-    def __repr__(self):
-        return 'later'
-
-
-class Dataset(Database):
-    r"""Base class Database SMAP
-    Arguments:
-    """
-
-    def __init__(self, *, rootDB, subsetName, yrLst,
-                 var=('varConstLst_Noah', 'varConstLst_Noah'),
-                 targetName='SMAP_AM'):
-        super().__init__(rootDB, subsetName)
-        self.__yrLst = yrLst
-        self.__time = funDB.readDBtime(
-            rootDB=self.rootDB, rootName=self.rootName, yrLst=yrLst)
-
-        # input data
-        self.__input = None
-        self.__statInput = None
-        self.__normInput = None
-
-        # input variable
-        if isinstance(var[0], list):
-            self.__varInputTs = var[0]
-        else:
-            self.__varInputTs = funDB.readVarLst(
-                rootDB=self.rootDB, varLst=var[0])
-        if isinstance(var[1], list):
-            self.__varInputConst = var[1]
-        else:
-            self.__varInputConst = funDB.readVarLst(
-                rootDB=self.rootDB, varLst=var[1])
-        self.__varInput = self.__varInputTs + self.__varInputConst
-
-        # target data
-        self.__target = None
-        self.__varTarget = targetName
-        self.__statTarget = None
-        self.__normTarget = None
-
     @property
     def time(self):
         return self.__time
@@ -102,47 +67,37 @@ class Dataset(Database):
     def yrLst(self):
         return self.__yrLst
 
-    @property
-    def input(self):
-        return self.__input
+    def __repr__(self):
+        return 'later'
 
-    @property
-    def statInput(self):
-        return self.__statInput
 
-    @property
-    def normInput(self):
-        return self.__normInput
+class DatasetLSTM(Dataset):
+    r"""Base class Database SMAP
+    Arguments:
+    """
 
-    @property
-    def varInputTs(self):
-        return self.__varInputTs
+    def __init__(self, *, rootDB, subsetName, yrLst,
+                 var=('varConstLst_Noah', 'varConstLst_Noah'),
+                 targetName='SMAP_AM'):
+        super().__init__(rootDB, subsetName, yrLst)
 
-    @property
-    def varInputConst(self):
-        return self.__varInputConst
+        # input variable
+        if isinstance(var[0], list):
+            self.varInputTs = var[0]
+        else:
+            self.varInputTs = funDB.readVarLst(
+                rootDB=self.rootDB, varLst=var[0])
+        if isinstance(var[1], list):
+            self.varInputConst = var[1]
+        else:
+            self.varInputConst = funDB.readVarLst(
+                rootDB=self.rootDB, varLst=var[1])
+        self.varInput = self.varInputTs + self.varInputConst
 
-    @property
-    def varInput(self):
-        return self.__varInput
+        # target variable
+        self.varTarget = targetName
 
-    @property
-    def target(self):
-        return self.__target
-
-    @property
-    def varTarget(self):
-        return self.__varTarget
-
-    @property
-    def statTarget(self):
-        return self.__statTarget
-
-    @property
-    def normTarget(self):
-        return self.__normTarget
-
-    def readTarget(self, *, loadData=True, loadStat=True, loadNorm=False):
+    def readTarget(self):
         nt = len(self.time)
         ngrid = len(self.indSub)
         data = funDB.readDataTS(
@@ -151,14 +106,9 @@ class Dataset(Database):
             nt=nt, ngrid=ngrid)
         stat = funDB.readStat(rootDB=self.rootDB, fieldName=self.varTarget)
         dataNorm = (data-stat[2])/stat[3]
-        if loadData is True:
-            self.__target = data
-        if loadStat is True:
-            self.__statTarget = stat
-        if loadNorm is True:
-            self.__normTarget = dataNorm
+        return dataNorm
 
-    def readInput(self, *, loadData=False, loadStat=True, loadNorm=True):
+    def readInput(self):
         nt = len(self.time)
         ngrid = len(self.indSub)
         nvar = len(self.varInput)
@@ -196,10 +146,41 @@ class Dataset(Database):
             stat[:, k] = statTemp
             k = k+1
 
-        if loadData is True:
-            self.__input = data
-        if loadStat is True:
-            self.__statInput = stat
-        if loadNorm is True:
-            dataNorm[np.where(np.isnan(dataNorm))] = 0
-            self.__normInput = dataNorm
+        dataNorm[np.where(np.isnan(dataNorm))] = 0
+        return dataNorm
+
+
+class DatasetPost(Dataset):
+    r"""Base class Database SMAP
+    Arguments:
+    """
+
+    def __init__(self, *, rootDB, subsetName, yrLst):
+        super().__init__(rootDB, subsetName, yrLst)
+
+    def readData(self, *, var, field=None):
+        nt = len(self.time)
+        ngrid = len(self.indSub)
+        data = funDB.readDataTS(
+            rootDB=self.rootDB, rootName=self.rootName, indSub=self.indSub,
+            indSkip=self.indSkip, yrLst=self.yrLst, fieldName=var,
+            nt=nt, ngrid=ngrid)
+        stat = funDB.readStat(rootDB=self.rootDB, fieldName=var)
+        if field is None:
+            field = var
+        setattr(self, field, data)
+        setattr(self, field+'_stat', stat)
+
+    def readPred(self, *, rootOut, out, drMC=0, var='pred'):
+        bPred = funLSTM.checkPred(out=out, rootOut=rootOut, test=self.subsetName,
+                          syr=self.yrLst[0], eyr=self.yrLst[-1], drMC=drMC)
+        if bPred is False:
+            print('running test')
+            funLSTM.testLSTM(out=out, rootOut=rootOut, test=self.subsetName,
+                             syr=self.yrLst[0], eyr=self.yrLst[-1], drMC=drMC)
+        dataPred, dataSigma, dataPredBatch, dataSigmaBatch = funLSTM.readPred(
+            out=out, rootOut=rootOut, test=self.subsetName, syr=self.yrLst[0], eyr=self.yrLst[-1], drMC=drMC)
+        setattr(self, var, dataPred)
+        setattr(self, var+'Sigma', dataSigma)
+        setattr(self, var+'MC', dataPredBatch)
+        setattr(self, var+'MC', dataSigmaBatch)

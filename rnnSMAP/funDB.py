@@ -5,11 +5,13 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 import time
+from argparse import Namespace
 
-def readDBinfo(*,rootDB, subsetName):
+
+def readDBinfo(*, rootDB, subsetName):
     subsetFile = os.path.join(rootDB, 'Subset', subsetName+'.csv')
     print(subsetFile)
-    dfSubset = pd.read_csv(subsetFile, dtype=np.int64, header=0)    
+    dfSubset = pd.read_csv(subsetFile, dtype=np.int64, header=0)
     rootName = dfSubset.columns.values[0]
     indSub = dfSubset.values.flatten()
 
@@ -26,7 +28,7 @@ def readDBinfo(*,rootDB, subsetName):
     return rootName, crd, indSub, indSkip
 
 
-def readDBtime(*,rootDB, rootName, yrLst):
+def readDBtime(*, rootDB, rootName, yrLst):
     tnum = np.empty(0, dtype=np.datetime64)
     for yr in yrLst:
         timeFile = os.path.join(
@@ -37,14 +39,14 @@ def readDBtime(*,rootDB, rootName, yrLst):
     return tnum
 
 
-def readVarLst(*,rootDB, varLst):
+def readVarLst(*, rootDB, varLst):
     varFile = os.path.join(rootDB, 'Variable', varLst+'.csv')
     varLst = pd.read_csv(varFile, header=None,
                          dtype=str).values.flatten().tolist()
     return varLst
 
 
-def readDataTS(*,rootDB, rootName, indSub, indSkip, yrLst, fieldName,
+def readDataTS(*, rootDB, rootName, indSub, indSkip, yrLst, fieldName,
                nt=-1, ngrid=-1):
     if nt == -1:
         tnum = readDBtime(rootDB, rootName, yrLst)
@@ -69,19 +71,19 @@ def readDataTS(*,rootDB, rootName, indSub, indSkip, yrLst, fieldName,
     return data
 
 
-def readDataConst(*,rootDB, rootName, indSub, indSkip, yrLst, fieldName, ngrid=-1):
+def readDataConst(*, rootDB, rootName, indSub, indSkip, yrLst, fieldName, ngrid=-1):
     if ngrid == -1:
         ngrid = len(indSub)
 
-    # read data    
+    # read data
     dataFile = os.path.join(rootDB, rootName, 'const', fieldName+'.csv')
     data = pd.read_csv(dataFile, dtype=np.float,
-                           skiprows=indSkip, header=None).values.flatten()
+                       skiprows=indSkip, header=None).values.flatten()
     data[np.where(data == -9999)] = np.nan
     return data
 
 
-def readStat(*,rootDB, fieldName, isConst=False):
+def readStat(*, rootDB, fieldName, isConst=False):
     if isConst is False:
         statFile = os.path.join(rootDB, 'Statistics', fieldName+'_stat.csv')
     else:

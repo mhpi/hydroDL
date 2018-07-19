@@ -33,7 +33,8 @@ class optLSTM(collections.OrderedDict):
         self['nEpoch'] = 500
         self['saveEpoch'] = 100
         self['addFlag'] = 0
-        self['sigma'] = 0
+        self['loss'] = 'mse'
+        self['lossPrior'] = 'gauss'
         if kw.keys() is not None:
             for key in kw:
                 if key in self:
@@ -48,6 +49,8 @@ class optLSTM(collections.OrderedDict):
         if self['model'] == 'cudnn':
             self['modelOpt'] = 'tied+relu'
             self['drMethod'] = 'drW'
+        if self['loss'] == 'mse':
+            self['lossPrior'] = ''
 
     def toParser(self):
         parser = argparse.ArgumentParser()
@@ -57,9 +60,9 @@ class optLSTM(collections.OrderedDict):
         return parser
 
     def toCmdLine(self):
-        cmdStr=''
+        cmdStr = ''
         for key, value in self.items():
-            cmdStr=cmdStr+' --'+key+' '+str(value)
+            cmdStr = cmdStr+' --'+key+' '+str(value)
         return cmdStr
 
     def fromParser(self, parser):
@@ -86,19 +89,30 @@ def initLSTMstate(ngrid, hiddenSize, gpu, nDim=3):
 
 
 class sigmaLoss(torch.nn.Module):
-    def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
+    def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean', prior=''):
         super(sigmaLoss, self).__init__()
         self.reduction = 'elementwise_mean'
+        if prior == '':
+            self.prior = None
+        else:
+            self.prior = prior.split('+')
 
     def forward(self, input, target):
         p = input[:, :, 0]
-        # s = input[-1, :, 1]
         s = input[:, :, 1]
         t = target[:, :, 0]
-        # loss = torch.mean(torch.exp(-s).mul(torch.mul(p-t, p-t))/2, dim=0)+s/2
-        loss = torch.mean(torch.exp(-s).mul(torch.mul(p-t, p-t))/2+s/2, dim=0)
-        lossMean = torch.mean(loss)
-        return lossMean
+        if self.prior[0] == 'gauss':
+            loss = torch.exp(-s).mul(torch.mul(p-t, p-t))/2+s/2
+            lossMeanT = torch.mean(loss, dim=0)
+        elif self.prior[0] == 'invGamma':
+            c1 = float(self.prior[1])
+            c2 = float(self.prior[2])
+            nt=p.shape[0]
+            loss = torch.exp(-s).mul(torch.mul(p-t, p-t)+c2/nt)/2+(1/2+c1/nt)*s
+            lossMeanT = torch.mean(loss, dim=0)
+
+        lossMeanB = torch.mean(lossMeanT)
+        return lossMeanB
 
 
 class torchLSTM(torch.nn.Module):
