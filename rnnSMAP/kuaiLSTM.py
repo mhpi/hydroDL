@@ -4,9 +4,7 @@ import math
 import torch
 import torch.nn
 import torch.nn.functional as F
-from torch import Tensor
 from torch.nn import Parameter
-import itertools
 
 
 def createMask(x, dr):
@@ -48,7 +46,7 @@ class slowLSTMcell_untied(torch.nn.Module):
 
     def __init__(self, *, inputSize, hiddenSize, train=True,
                  dr=0.5, drMethod='gal+sem', gpu=0):
-        super(untiedLSTMcell, self).__init__()
+        super(slowLSTMcell_untied, self).__init__()
         self.inputSize = inputSize
         self.hiddenSize = inputSize
         self.dr = dr
@@ -107,7 +105,7 @@ class slowLSTMcell_untied(torch.nn.Module):
 
     def forward(self, x, hidden):
         h0, c0 = hidden
-        doDrop = self.train and self.dr > 0.0
+        doDrop = self.training and self.dr > 0.0
 
         if doDrop:
             self.init_mask(x, h0, c0)
@@ -178,7 +176,7 @@ class slowLSTMcell_tied(torch.nn.Module):
 
     def __init__(self, *, inputSize, hiddenSize, mode='train',
                  dr=0.5, drMethod='drX+drW+drC', gpu=1):
-        super(tiedLSTMcell, self).__init__()
+        super(slowLSTMcell_tied, self).__init__()
 
         self.inputSize = inputSize
         self.hiddenSize = hiddenSize
@@ -219,19 +217,18 @@ class slowLSTMcell_tied(torch.nn.Module):
         self.maskW_hh = createMask(self.w_hh, self.dr)
 
     def forward(self, x, hidden):
-        nbatch = x.size(0)
         h0, c0 = hidden
 
         if self.dr > 0 and self.training is True:
             self.reset_mask()
 
-        if doDrop and 'drH' in self.drMethod:
+        if self.training is True and 'drH' in self.drMethod:
             h0 = h0.mul(self.maskH)
             self.w_ih = dropMask.apply(self.w_ih)
-        if doDrop and 'drX' in self.drMethod:
+        if self.training is True and 'drX' in self.drMethod:
             x = x.mul(self.maskX)
 
-        if doDrop and 'drW' in self.drMethod:
+        if self.training is True and 'drW' in self.drMethod:
             # w_ih = self.w_ih.mul(self.maskW_ih)
             self.w_ih = dropMask.apply(self.w_ih)
             w_hh = self.w_hh.mul(self.maskW_hh)
@@ -248,7 +245,7 @@ class slowLSTMcell_tied(torch.nn.Module):
         gate_c = F.tanh(gate_c)
         gate_o = F.sigmoid(gate_o)
 
-        if doDrop and 'drC' in self.drMethod:
+        if self.training is True and 'drC' in self.drMethod:
             gate_c = gate_c.mul(self.maskC)
 
         c1 = (gate_f * c0) + (gate_i * gate_c)
@@ -258,14 +255,11 @@ class slowLSTMcell_tied(torch.nn.Module):
 
 
 class cudnnLSTM(torch.nn.Module):
-    def __init__(self, *, inputSize, hiddenSize, train=True,
-                 dr=0.5, drMethod='drW', gpu=0):
+    def __init__(self, *, inputSize, hiddenSize, dr=0.5, drMethod='drW', gpu=0):
         super(cudnnLSTM, self).__init__()
         self.inputSize = inputSize
         self.hiddenSize = hiddenSize
         self.dr = dr
-        self.training = train
-
         self.w_ih = Parameter(torch.Tensor(hiddenSize*4, inputSize))
         self.w_hh = Parameter(torch.Tensor(hiddenSize*4, hiddenSize))
         self.b_ih = Parameter(torch.Tensor(hiddenSize*4))
@@ -298,7 +292,12 @@ class cudnnLSTM(torch.nn.Module):
         for weight in self.parameters():
             weight.data.uniform_(-stdv, stdv)
 
-    def forward(self, input, hx=None, cx=None):
+    def forward(self, input, hx=None, cx=None, doDropMC=False):
+        if self.dr > 0 and (doDropMC is True or self.training is True):
+            doDrop = True
+        else:
+            doDrop = False
+
         batchSize = input.size(1)
 
         if hx is None:
@@ -310,7 +309,7 @@ class cudnnLSTM(torch.nn.Module):
 
         # cuDNN backend - disabled flat weight
         handle = torch.backends.cudnn.get_handle()
-        if self.dr > 0 and self.training is True:
+        if doDrop is True:
             self.reset_mask()
             weight = [dropMask.apply(self.w_ih, self.maskW_ih, True),
                       dropMask.apply(self.w_hh, self.maskW_hh, True),
@@ -326,4 +325,5 @@ class cudnnLSTM(torch.nn.Module):
 
     @property
     def all_weights(self):
-        return [[getattr(self, weight) for weight in weights] for weights in self._all_weights]
+        return [[getattr(self, weight) for weight in weights]
+                for weights in self._all_weights]

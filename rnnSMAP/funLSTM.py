@@ -1,4 +1,5 @@
 import os
+import sys
 import torch
 import time
 import numpy as np
@@ -7,6 +8,7 @@ from argparse import Namespace
 
 from . import classLSTM
 from . import classDB
+# from . import classPost
 from . import funDB
 from . import kPath
 
@@ -54,6 +56,8 @@ def trainLSTM(optDict: classLSTM.optLSTM):
         os.mkdir(outFolder)
     saveOptLSTM(outFolder, optDict)
     runFile = os.path.join(outFolder, 'runFile.csv')
+    # logFile = os.path.join(outFolder, 'log')
+    # sys.stdout = open(logFile, 'w')
 
     #############################################
     # load data
@@ -167,20 +171,21 @@ def trainLSTM(optDict: classLSTM.optLSTM):
             if iEpoch % saveEpoch == 0:
                 modelFile = os.path.join(outFolder, 'ep'+str(iEpoch)+'.pt')
                 torch.save(model, modelFile)
-            _ = rf.write(str(lossEpoch/nIterEpoch)+'\n')
+            rf.write(str(lossEpoch/nIterEpoch)+'\n')
             print('Epoch {} Loss {:.3f} time {:.2f}'.format(
                 iEpoch, lossEpoch/nIterEpoch, time.time()-timeEpoch))
             lossEpoch = 0
             timeEpoch = time.time()
             iEpoch = iEpoch+1
     rf.close()
+    sys.stdout.close()
 
 
 def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
     outFolder = os.path.join(rootOut, out)
     optDict = loadOptLSTM(outFolder)
     opt = Namespace(**optDict)
-    if epoch == None:
+    if epoch is None:
         epoch = opt.nEpoch
 
     #############################################
@@ -194,26 +199,26 @@ def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
     xTest = torch.from_numpy(np.swapaxes(x, 1, 0)).float()
     if opt.gpu > 0:
         xTest = xTest.cuda()
+    nt, ngrid, nx = xTest.shape
+    if opt.loss == 'sigma':
+        ny = 2
+    else:
+        ny = 1
 
     #############################################
     # Load Model
     #############################################
     modelFile = os.path.join(outFolder, 'ep'+str(epoch)+'.pt')
     model = torch.load(modelFile)
-    model.train(mode=False)
 
     #############################################
     # save prediction
     #############################################
+    model.train(mode=False)
+    yP = model(xTest)
     if opt.loss == 'sigma':
         yOut = yP[:, :, 0].detach().cpu().numpy().squeeze()
         sOut = yP[:, :, 1].detach().cpu().numpy().squeeze()
-
-        sigmaName = 'testSigma_{}_{}_{}_ep{}.csv'.format(
-            test, str(syr), str(eyr), str(epoch))
-        sigmaFile = os.path.join(outFolder, sigmaName)
-        print('saving '+sigmaFile)
-        pd.DataFrame(sOut).to_csv(sigmaFile, header=False, index=False)
     else:
         yOut = yP.detach().cpu().numpy().squeeze()
 
@@ -223,8 +228,15 @@ def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
     print('saving '+predFile)
     pd.DataFrame(yOut).to_csv(predFile, header=False, index=False)
 
+    if opt.loss == 'sigma':
+        sigmaName = 'testSigma_{}_{}_{}_ep{}.csv'.format(
+            test, str(syr), str(eyr), str(epoch))
+        sigmaFile = os.path.join(outFolder, sigmaName)
+        print('saving '+sigmaFile)
+        pd.DataFrame(sOut).to_csv(sigmaFile, header=False, index=False)
+
     if drMC > 0:
-        model.train()
+        # model.train()
         mcName = 'test_{}_{}_{}_ep{}_drM{}'.format(
             test, str(syr), str(eyr), str(epoch), str(drMC))
         mcFolder = os.path.join(outFolder, mcName)
@@ -232,7 +244,16 @@ def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
             os.mkdir(mcFolder)
 
         for kk in range(0, drMC):
-            yP = model(xTest)
+            # yP = torch.zeros([nt, ngrid, ny])
+            # nBatch = 300
+            # iS = np.arange(0, ngrid, nBatch)
+            # iE = np.append(iS[1:], ngrid)
+            # for i in range(0, len(iS)):
+            #     xTemp = xTest[:, iS[i]:iE[i], :]
+            #     yP[:, iS[i]:iE[i], :] = model(xTemp)
+            #     model.zero_grad()
+            yP = model(xTest, doDropMC=True)
+
             if opt.loss == 'sigma':
                 yOut = yP[:, :, 0].detach().cpu().numpy().squeeze()
                 sOut = yP[:, :, 1].detach().cpu().numpy().squeeze()
@@ -254,9 +275,10 @@ def readPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
     outFolder = os.path.join(rootOut, out)
     optDict = loadOptLSTM(outFolder)
     opt = Namespace(**optDict)
-    if epoch == None:
+    if epoch is None:
         epoch = opt.nEpoch
-    stat = funDB.readStat(rootDB=opt.rootDB, fieldName=opt.target, isConst=False)
+    stat = funDB.readStat(
+        rootDB=opt.rootDB, fieldName=opt.target, isConst=False)
 
     if opt.loss == 'sigma':
         sigmaName = 'testSigma_{}_{}_{}_ep{}.csv'.format(
@@ -279,30 +301,43 @@ def readPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
 
     ngrid, nt = dataSigma.shape
     if drMC > 0:
-        dataPredBatch = np.empty([ngrid, nt, drMC])
         dataSigmaBatch = np.empty([ngrid, nt, drMC])
         mcName = 'test_{}_{}_{}_ep{}_drM{}'.format(
             test, str(syr), str(eyr), str(epoch), str(drMC))
+        mcSigmaName = 'testSigma_{}_{}_{}_ep{}_drM{}'.format(
+            test, str(syr), str(eyr), str(epoch), str(drMC))
         mcFolder = os.path.join(outFolder, mcName)
 
-        for kk in range(0, drMC):
-            if opt.loss == 'sigma':
-                sigmaName = 'drSigma_{}.csv'.format(str(kk))
-                sigmaFile = os.path.join(mcFolder, sigmaName)
-                print('reading '+sigmaFile)
-                temp = pd.read_csv(sigmaFile, dtype=np.float,
+        mcFile = os.path.join(outFolder, mcName+'.npy')
+        mcSigmaFile = os.path.join(outFolder, mcSigmaName+'.npy')
+
+        if not os.path.isfile(mcFile):
+            dataPredBatch = np.empty([ngrid, nt, drMC])
+            for kk in range(0, drMC):
+                predName = 'drMC_{}.csv'.format(str(kk))
+                predFile = os.path.join(mcFolder, predName)
+                print('reading '+predFile)
+                temp = pd.read_csv(predFile, dtype=np.float,
                                    header=None).values.swapaxes(1, 0)
-                temp = np.sqrt(np.exp(temp))*stat[3]
-                dataSigmaBatch[:, :, kk] = temp
+                temp = temp*stat[3]+stat[2]
+                dataPredBatch[:, :, kk] = temp
+            np.save(mcFile, dataPredBatch)
+        else:
+            dataPredBatch = np.load(mcFile)
 
-            predName = 'drMC_{}.csv'.format(str(kk))
-            predFile = os.path.join(mcFolder, predName)
-            print('reading '+predFile)
-            temp = pd.read_csv(predFile, dtype=np.float,
-                               header=None).values.swapaxes(1, 0)
-            temp = temp*stat[3]+stat[2]
-            dataPredBatch[:, :, kk] = temp
-
+        if opt.loss == 'sigma':
+            if not os.path.isfile(mcSigmaFile):
+                for kk in range(0, drMC):
+                    sigmaName = 'drSigma_{}.csv'.format(str(kk))
+                    sigmaFile = os.path.join(mcFolder, sigmaName)
+                    print('reading '+sigmaFile)
+                    temp = pd.read_csv(sigmaFile, dtype=np.float,
+                                       header=None).values.swapaxes(1, 0)
+                    temp = np.sqrt(np.exp(temp))*stat[3]
+                    dataSigmaBatch[:, :, kk] = temp
+                np.save(mcSigmaFile, dataSigmaBatch)
+            else:
+                dataSigmaBatch = np.load(mcFile)
     else:
         dataSigmaBatch = None
         dataPredBatch = None
@@ -314,7 +349,7 @@ def checkPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
     outFolder = os.path.join(rootOut, out)
     optDict = loadOptLSTM(outFolder)
     opt = Namespace(**optDict)
-    if epoch == None:
+    if epoch is None:
         epoch = opt.nEpoch
 
     if opt.loss == 'sigma':
@@ -329,7 +364,7 @@ def checkPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
     predFile = os.path.join(outFolder, predName)
     if not os.path.isfile(predFile):
         return False
-    
+
     if drMC > 0:
         mcName = 'test_{}_{}_{}_ep{}_drM{}'.format(
             test, str(syr), str(eyr), str(epoch), str(drMC))

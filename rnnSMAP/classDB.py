@@ -1,12 +1,9 @@
 # This module include database classes
 
-import os
 import numpy as np
-import pandas as pd
-import datetime as dt
 from . import funDB
 from . import funLSTM
-import time
+from . import classPost
 
 
 class Dataset(object):
@@ -23,6 +20,10 @@ class Dataset(object):
         rootName, crd, indSub, indSkip = funDB.readDBinfo(
             rootDB=rootDB, subsetName=subsetName)
         self.__crd = crd
+        (gridY, gridX, indY, indX) = funDB.crd2grid(crd[:, 0], crd[:, 1])
+        self.__crdGrid = (gridY, gridX)
+        self.__crdGridInd = np.stack((indY, indX), axis=1)
+
         self.__indSub = indSub
         self.__indSkip = indSkip
         self.__rootName = rootName
@@ -38,6 +39,14 @@ class Dataset(object):
     @property
     def crd(self):
         return self.__crd
+
+    @property
+    def crdGrid(self):
+        return self.__crdGrid
+
+    @property
+    def crdGridInd(self):
+        return self.__crdGridInd
 
     @property
     def indSub(self):
@@ -171,16 +180,36 @@ class DatasetPost(Dataset):
         setattr(self, field, data)
         setattr(self, field+'_stat', stat)
 
-    def readPred(self, *, rootOut, out, drMC=0, var='pred'):
-        bPred = funLSTM.checkPred(out=out, rootOut=rootOut, test=self.subsetName,
-                          syr=self.yrLst[0], eyr=self.yrLst[-1], drMC=drMC)
+    def readPred(self, *, rootOut, out, drMC=0, field='LSTM'):
+        bPred = funLSTM.checkPred(
+            out=out, rootOut=rootOut, test=self.subsetName,
+            syr=self.yrLst[0], eyr=self.yrLst[-1], drMC=drMC)
         if bPred is False:
             print('running test')
             funLSTM.testLSTM(out=out, rootOut=rootOut, test=self.subsetName,
                              syr=self.yrLst[0], eyr=self.yrLst[-1], drMC=drMC)
         dataPred, dataSigma, dataPredBatch, dataSigmaBatch = funLSTM.readPred(
-            out=out, rootOut=rootOut, test=self.subsetName, syr=self.yrLst[0], eyr=self.yrLst[-1], drMC=drMC)
-        setattr(self, var, dataPred)
-        setattr(self, var+'Sigma', dataSigma)
-        setattr(self, var+'MC', dataPredBatch)
-        setattr(self, var+'MC', dataSigmaBatch)
+            out=out, rootOut=rootOut, test=self.subsetName,
+            syr=self.yrLst[0], eyr=self.yrLst[-1], drMC=drMC)
+        setattr(self, field, dataPred)
+        setattr(self, field+'_Sigma', dataSigma)
+        setattr(self, field+'_MC', dataPredBatch)
+        setattr(self, field+'_SigmaMC', dataSigmaBatch)
+
+    def statCalError(self, *, predField='LSTM', targetField='SMAP'):
+        pred = getattr(self, predField)
+        target = getattr(self, targetField)
+        statError = classPost.statError(pred=pred, target=target)
+        return statError
+
+    def statCalSigma(self, *, field='LSTM'):
+        # dataPred = getattr(self, field)
+        dataSigma = getattr(self, field+'_Sigma')
+        dataPredBatch = getattr(self, field+'_MC')
+        # dataSigmaBatch = getattr(self, field+'_SigmaMC')
+        statSigma = classPost.statSigma(
+            dataMC=dataPredBatch, dataSigma=dataSigma)
+        return statSigma
+
+    def data2grid(self, *, field):
+        pass

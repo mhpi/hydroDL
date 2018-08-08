@@ -1,7 +1,7 @@
 
 
 import rnnSMAP
-import argparse
+# import argparse
 import os
 import imp
 imp.reload(rnnSMAP)
@@ -19,7 +19,7 @@ if __name__ == '__main__':
 def runCmdLine(*, opt, cudaID, screenName='test'):
     argStr = opt.toCmdLine()
     codePath = os.path.realpath(__file__)
-    cmd = 'CUDA_VISIBLE_DEVICE='+str(cudaID)+' ' + \
+    cmd = 'CUDA_VISIBLE_DEVICES='+str(cudaID)+' ' + \
         'screen -dmS '+screenName+' '+'python '+codePath+argStr
     print(cmd)
     os.system(cmd)

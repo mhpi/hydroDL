@@ -3,9 +3,7 @@
 import os
 import numpy as np
 import pandas as pd
-import datetime as dt
 import time
-from argparse import Namespace
 
 
 def readDBinfo(*, rootDB, subsetName):
@@ -23,6 +21,7 @@ def readDBinfo(*, rootDB, subsetName):
         indSub = indAll
         indSkip = None
     else:
+        indSub = indSub-1
         indSkip = np.delete(indAll, indSub)
     crd = crdRoot[indSub, :]
     return rootName, crd, indSub, indSkip
@@ -61,8 +60,8 @@ def readDataTS(*, rootDB, rootName, indSub, indSkip, yrLst, fieldName,
     for yr in yrLst:
         t1 = time.time()
         dataFile = os.path.join(rootDB, rootName, str(yr), fieldName+'.csv')
-        dataTemp = pd.read_csv(dataFile, dtype=np.float,
-                               skiprows=indSkip, header=None).values
+        dataTemp = pd.read_csv(
+            dataFile, dtype=np.float, skiprows=indSkip, header=None).values
         k2 = k1+dataTemp.shape[1]
         data[:, k1:k2] = dataTemp
         k1 = k2
@@ -71,7 +70,8 @@ def readDataTS(*, rootDB, rootName, indSub, indSkip, yrLst, fieldName,
     return data
 
 
-def readDataConst(*, rootDB, rootName, indSub, indSkip, yrLst, fieldName, ngrid=-1):
+def readDataConst(*, rootDB, rootName, indSub, indSkip,
+                  yrLst, fieldName, ngrid=-1):
     if ngrid == -1:
         ngrid = len(indSub)
 
@@ -93,3 +93,17 @@ def readStat(*, rootDB, fieldName, isConst=False):
     return stat
 
 
+def crd2grid(y, x):
+    ux, indx1, indx2 = np.unique(y, return_index=True, return_inverse=True)
+    uy, indy1, indy2 = np.unique(x, return_index=True, return_inverse=True)
+    minDx = np.min(ux[1:]-ux[0:-1])
+    minDy = np.min(uy[1:]-uy[0:-1])
+    maxDx = np.max(ux[1:]-ux[0:-1])
+    maxDy = np.max(uy[1:]-uy[0:-1])
+    if maxDx > minDx*2 or maxDy > minDy*2:
+        raise Exception('skipped coloums or rows')
+        print('skipped coloums or rows')
+    uy = uy[::-1]
+    ny = len(uy)
+    indy2 = ny-1-indy2
+    return (uy, ux, indy2, indx2)

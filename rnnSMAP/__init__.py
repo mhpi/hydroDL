@@ -42,6 +42,8 @@ from . import classDB
 from . import funDB
 from . import classLSTM
 from . import funLSTM
+from . import classPost
+from . import funPost
 from . import kuaiLSTM
 
 
@@ -51,5 +53,7 @@ def reload():
     imp.reload(funDB)
     imp.reload(classLSTM)
     imp.reload(funLSTM)
+    imp.reload(classPost)
+    imp.reload(funPost)
     imp.reload(kuaiLSTM)
 

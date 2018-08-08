@@ -40,10 +40,11 @@ class optLSTM(collections.OrderedDict):
                 if key in self:
                     try:
                         self[key] = type(self[key])(kw[key])
-                    except:
+                    except ValueError:
                         print('skiped '+key+': wrong type')
                 else:
                     print('skiped '+key+': not in argument dict')
+        self.checkOpt()
 
     def checkOpt(self):
         if self['model'] == 'cudnn':
@@ -107,7 +108,7 @@ class sigmaLoss(torch.nn.Module):
         elif self.prior[0] == 'invGamma':
             c1 = float(self.prior[1])
             c2 = float(self.prior[2])
-            nt=p.shape[0]
+            nt = p.shape[0]
             loss = torch.exp(-s).mul(torch.mul(p-t, p-t)+c2/nt)/2+(1/2+c1/nt)*s
             lossMeanT = torch.mean(loss, dim=0)
 
@@ -220,20 +221,20 @@ class localLSTM_cuDNN(torch.nn.Module):
         self.is_cuda = True
         self.gpu = 1
 
-    def forward(self, x):
+    def forward(self, x, doDropMC=False):
         if self.doReLU is True:
             x0 = self.linearIn(x)
             x0 = self.relu(x0)
         else:
             x0 = x
-        outLSTM, (hn, cn) = self.lstm(x0)
+        outLSTM, (hn, cn) = self.lstm(x0, doDropMC=doDropMC)
         out = self.linearOut(outLSTM)
         return out
 
 
 class localLSTM_slow(torch.nn.Module):
     def __init__(self, *, nx, ny, hiddenSize, dr=0.5, gpu=1, drMethod, doReLU=True, doTied=True):
-        super(modelLSTM_local, self).__init__()
+        super(localLSTM_slow, self).__init__()
         self.nx = nx
         self.ny = ny
         self.hiddenSize = hiddenSize
