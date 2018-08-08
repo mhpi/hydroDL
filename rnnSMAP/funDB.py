@@ -94,8 +94,8 @@ def readStat(*, rootDB, fieldName, isConst=False):
 
 
 def crd2grid(y, x):
-    ux, indx1, indx2 = np.unique(y, return_index=True, return_inverse=True)
-    uy, indy1, indy2 = np.unique(x, return_index=True, return_inverse=True)
+    ux, indx1, indx2 = np.unique(x, return_index=True, return_inverse=True)
+    uy, indy1, indy2 = np.unique(y, return_index=True, return_inverse=True)
     minDx = np.min(ux[1:]-ux[0:-1])
     minDy = np.min(uy[1:]-uy[0:-1])
     maxDx = np.max(ux[1:]-ux[0:-1])

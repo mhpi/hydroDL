@@ -15,66 +15,22 @@ class Dataset(object):
     """
 
     def __init__(self, rootDB, subsetName, yrLst):
-        self.__rootDB = rootDB
-        self.__subsetName = subsetName
+        self.rootDB = rootDB
+        self.subsetName = subsetName
         rootName, crd, indSub, indSkip = funDB.readDBinfo(
             rootDB=rootDB, subsetName=subsetName)
-        self.__crd = crd
+        self.crd = crd
         (gridY, gridX, indY, indX) = funDB.crd2grid(crd[:, 0], crd[:, 1])
-        self.__crdGrid = (gridY, gridX)
-        self.__crdGridInd = np.stack((indY, indX), axis=1)
+        self.crdGrid = (gridY, gridX)
+        self.crdGridInd = np.stack((indY, indX), axis=1)
 
-        self.__indSub = indSub
-        self.__indSkip = indSkip
-        self.__rootName = rootName
+        self.indSub = indSub
+        self.indSkip = indSkip
+        self.rootName = rootName
 
-        self.__yrLst = yrLst
-        self.__time = funDB.readDBtime(
+        self.yrLst = yrLst
+        self.time = funDB.readDBtime(
             rootDB=self.rootDB, rootName=self.rootName, yrLst=yrLst)
-
-    @property
-    def rootName(self):
-        return self.__rootName
-
-    @property
-    def crd(self):
-        return self.__crd
-
-    @property
-    def crdGrid(self):
-        return self.__crdGrid
-
-    @property
-    def crdGridInd(self):
-        return self.__crdGridInd
-
-    @property
-    def indSub(self):
-        return self.__indSub
-
-    @property
-    def rootDB(self):
-        return self.__rootDB
-
-    @property
-    def subsetName(self):
-        return self.__subsetName
-
-    @property
-    def indSkip(self):
-        return self.__indSkip
-
-    @property
-    def nGrid(self):
-        return len(self.crd)
-
-    @property
-    def time(self):
-        return self.__time
-
-    @property
-    def yrLst(self):
-        return self.__yrLst
 
     def __repr__(self):
         return 'later'
@@ -196,6 +152,21 @@ class DatasetPost(Dataset):
         setattr(self, field+'_MC', dataPredBatch)
         setattr(self, field+'_SigmaMC', dataSigmaBatch)
 
+    def data2grid(self, field):
+        data = getattr(self, field)
+        indY = self.crdGridInd[:, 0]
+        indX = self.crdGridInd[:, 1]
+        ny = len(self.crdGrid[0])
+        nx = len(self.crdGrid[1])
+        if data.ndim == 2:
+            nt = data.shape[1]
+            grid = np.full([ny, nx, nt], np.nan)
+            grid[indY, indX, :] = data
+        elif data.ndim == 1:
+            grid = np.full([ny, nx], np.nan)
+            grid[indY, indX] = data
+        setattr(self, field+'_grid', grid)
+
     def statCalError(self, *, predField='LSTM', targetField='SMAP'):
         pred = getattr(self, predField)
         target = getattr(self, targetField)
@@ -210,6 +181,3 @@ class DatasetPost(Dataset):
         statSigma = classPost.statSigma(
             dataMC=dataPredBatch, dataSigma=dataSigma)
         return statSigma
-
-    def data2grid(self, *, field):
-        pass
