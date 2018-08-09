@@ -152,8 +152,16 @@ class DatasetPost(Dataset):
         setattr(self, field+'_MC', dataPredBatch)
         setattr(self, field+'_SigmaMC', dataSigmaBatch)
 
-    def data2grid(self, field):
-        data = getattr(self, field)
+    def data2grid(self, *, field=None, data=None):
+        if field is None and data is None:
+            raise Exception('no input to data2grid')
+        if field is not None and data is not None:
+            raise Exception('repeat input to data2grid')
+        if field is not None:
+            data = getattr(self, field)
+        elif data.shape[0] != self.crd.shape[0]:
+            raise Exception('data is of wrong size')
+
         indY = self.crdGridInd[:, 0]
         indX = self.crdGridInd[:, 1]
         ny = len(self.crdGrid[0])
@@ -165,12 +173,14 @@ class DatasetPost(Dataset):
         elif data.ndim == 1:
             grid = np.full([ny, nx], np.nan)
             grid[indY, indX] = data
-        setattr(self, field+'_grid', grid)
+        # setattr(self, field+'_grid', grid)
+        return grid
 
     def statCalError(self, *, predField='LSTM', targetField='SMAP'):
         pred = getattr(self, predField)
         target = getattr(self, targetField)
         statError = classPost.statError(pred=pred, target=target)
+        # setattr(self, 'statErr_'+predField+'_'+targetField, statError)
         return statError
 
     def statCalSigma(self, *, field='LSTM'):
@@ -180,4 +190,5 @@ class DatasetPost(Dataset):
         # dataSigmaBatch = getattr(self, field+'_SigmaMC')
         statSigma = classPost.statSigma(
             dataMC=dataPredBatch, dataSigma=dataSigma)
+        # setattr(self, 'statSigma_'+field, statSigma)
         return statSigma
