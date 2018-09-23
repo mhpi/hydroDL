@@ -51,7 +51,7 @@ class optLSTM(collections.OrderedDict):
             self['modelOpt'] = 'tied+relu'
             self['drMethod'] = 'drW'
         if self['loss'] == 'mse':
-            self['lossPrior'] = ''
+            self['lossPrior'] = 'gauss'
 
     def toParser(self):
         parser = argparse.ArgumentParser()
@@ -101,7 +101,11 @@ class sigmaLoss(torch.nn.Module):
     def forward(self, input, target):
         p = input[:, :, 0]
         s = input[:, :, 1]
+        # s = input[-1, :, 1]
         t = target[:, :, 0]
+        loc0 = t == p
+        s[loc0] = 1
+        # s.detach()
         if self.prior[0] == 'gauss':
             loss = torch.exp(-s).mul(torch.mul(p-t, p-t))/2+s/2
             lossMeanT = torch.mean(loss, dim=0)

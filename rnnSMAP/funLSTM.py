@@ -2,6 +2,7 @@ import os
 import sys
 import torch
 import time
+import shutil
 import numpy as np
 import pandas as pd
 from argparse import Namespace
@@ -181,7 +182,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     sys.stdout.close()
 
 
-def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
+def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0, testBatch=0):
     outFolder = os.path.join(rootOut, out)
     optDict = loadOptLSTM(outFolder)
     opt = Namespace(**optDict)
@@ -215,7 +216,17 @@ def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
     # save prediction
     #############################################
     model.train(mode=False)
-    yP = model(xTest)
+    if testBatch > 0:
+        yP = torch.zeros([nt, ngrid, ny])
+        iS = np.arange(0, ngrid, testBatch)
+        iE = np.append(iS[1:], ngrid)
+        for i in range(0, len(iS)):
+            xTemp = xTest[:, iS[i]:iE[i], :]
+            yP[:, iS[i]:iE[i], :] = model(xTemp)
+            model.zero_grad()
+    else:
+        yP = model(xTest)
+
     if opt.loss == 'sigma':
         yOut = yP[:, :, 0].detach().cpu().numpy().squeeze()
         sOut = yP[:, :, 1].detach().cpu().numpy().squeeze()
@@ -240,19 +251,32 @@ def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
         mcName = 'test_{}_{}_{}_ep{}_drM{}'.format(
             test, str(syr), str(eyr), str(epoch), str(drMC))
         mcFolder = os.path.join(outFolder, mcName)
+
+        # remove existing files
+        mcFile = os.path.join(outFolder, mcName+'.npy')
+        mcSigmaName = 'testSigma_{}_{}_{}_ep{}_drM{}'.format(
+            test, str(syr), str(eyr), str(epoch), str(drMC))
+        mcSigmaFile = os.path.join(outFolder, mcSigmaName+'.npy')
+        if os.path.isdir(mcFolder):
+            shutil.rmtree(mcFolder)
+        if os.path.isfile(mcFile):
+            os.remove(mcFile)
+        if os.path.isfile(mcSigmaFile):
+            os.remove(mcSigmaFile)
+
         if not os.path.isdir(mcFolder):
             os.mkdir(mcFolder)
-
         for kk in range(0, drMC):
-            # yP = torch.zeros([nt, ngrid, ny])
-            # nBatch = 300
-            # iS = np.arange(0, ngrid, nBatch)
-            # iE = np.append(iS[1:], ngrid)
-            # for i in range(0, len(iS)):
-            #     xTemp = xTest[:, iS[i]:iE[i], :]
-            #     yP[:, iS[i]:iE[i], :] = model(xTemp)
-            #     model.zero_grad()
-            yP = model(xTest, doDropMC=True)
+            if testBatch > 0:
+                yP = torch.zeros([nt, ngrid, ny])
+                iS = np.arange(0, ngrid, testBatch)
+                iE = np.append(iS[1:], ngrid)
+                for i in range(0, len(iS)):
+                    xTemp = xTest[:, iS[i]:iE[i], :]
+                    yP[:, iS[i]:iE[i], :] = model(xTemp, doDropMC=True)
+                    model.zero_grad()
+            else:
+                yP = model(xTest, doDropMC=True)
 
             if opt.loss == 'sigma':
                 yOut = yP[:, :, 0].detach().cpu().numpy().squeeze()
@@ -271,7 +295,7 @@ def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
             pd.DataFrame(yOut).to_csv(predFile, header=False, index=False)
 
 
-def readPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
+def readPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0, reReadMC=False):
     outFolder = os.path.join(rootOut, out)
     optDict = loadOptLSTM(outFolder)
     opt = Namespace(**optDict)
@@ -299,7 +323,7 @@ def readPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
                        header=None).values.swapaxes(1, 0)
     dataPred = temp*stat[3]+stat[2]
 
-    ngrid, nt = dataSigma.shape
+    ngrid, nt = dataPred.shape
     if drMC > 0:
         dataSigmaBatch = np.empty([ngrid, nt, drMC])
         mcName = 'test_{}_{}_{}_ep{}_drM{}'.format(
@@ -311,7 +335,7 @@ def readPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
         mcFile = os.path.join(outFolder, mcName+'.npy')
         mcSigmaFile = os.path.join(outFolder, mcSigmaName+'.npy')
 
-        if not os.path.isfile(mcFile):
+        if not os.path.isfile(mcFile) or reReadMC:
             dataPredBatch = np.empty([ngrid, nt, drMC])
             for kk in range(0, drMC):
                 predName = 'drMC_{}.csv'.format(str(kk))
@@ -326,7 +350,7 @@ def readPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
             dataPredBatch = np.load(mcFile)
 
         if opt.loss == 'sigma':
-            if not os.path.isfile(mcSigmaFile):
+            if not os.path.isfile(mcSigmaFile) or reReadMC:
                 for kk in range(0, drMC):
                     sigmaName = 'drSigma_{}.csv'.format(str(kk))
                     sigmaFile = os.path.join(mcFolder, sigmaName)
@@ -337,7 +361,7 @@ def readPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
                     dataSigmaBatch[:, :, kk] = temp
                 np.save(mcSigmaFile, dataSigmaBatch)
             else:
-                dataSigmaBatch = np.load(mcFile)
+                dataSigmaBatch = np.load(mcSigmaFile)
     else:
         dataSigmaBatch = None
         dataPredBatch = None

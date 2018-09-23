@@ -6,6 +6,8 @@ import scipy
 class statError(object):
     def __init__(self, *, pred, target):
         ngrid, nt = pred.shape
+        # Bias
+        self.Bias = np.nanmean(pred-target, axis=1)
         # RMSE
         self.RMSE = np.sqrt(np.nanmean((pred-target)**2, axis=1))
         # ubRMSE
@@ -20,7 +22,7 @@ class statError(object):
             x = pred[k, :]
             y = target[k, :]
             ind = np.where(np.logical_and(~np.isnan(x), ~np.isnan(y)))[0]
-            if ind.shape[0]>0:
+            if ind.shape[0] > 0:
                 xx = x[ind]
                 yy = y[ind]
                 rho[k] = scipy.stats.pearsonr(xx, yy)[0]
@@ -29,9 +31,12 @@ class statError(object):
 
 class statSigma(object):
     def __init__(self, *, dataMC, dataSigma):
-        self.sigmaMC_mat = np.std(dataMC, axis=2)
-        self.sigmaX_mat = dataSigma
-        self.sigmaMC = np.nanmean(self.sigmaMC_mat, axis=1)
-        self.sigmaX = np.nanmean(self.sigmaX_mat, axis=1)
-        self.sigma_mat = np.sqrt(self.sigmaMC_mat**2+self.sigmaX_mat**2)
-        self.sigma = np.nanmean(self.sigma_mat, axis=1)
+        if dataMC is not None:
+            self.sigmaMC_mat = np.std(dataMC, axis=2)
+            self.sigmaMC = np.nanmean(self.sigmaMC_mat, axis=1)
+        if dataSigma is not None:
+            self.sigmaX_mat = dataSigma               
+            self.sigmaX = np.nanmean(self.sigmaX_mat, axis=1)
+        if dataMC is not None and dataSigma is not None:
+            self.sigma_mat = np.sqrt(self.sigmaMC_mat**2+self.sigmaX_mat**2)
+            self.sigma = np.nanmean(self.sigma_mat, axis=1)

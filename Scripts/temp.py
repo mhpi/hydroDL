@@ -1,34 +1,50 @@
-import rnnSMAP
-from rnnSMAP import runTrainLSTM
-import imp
 import numpy as np
-from mpl_toolkits.basemap import Basemap, cm
 import matplotlib.pyplot as plt
-imp.reload(rnnSMAP)
-rnnSMAP.reload()
+from matplotlib.collections import PatchCollection
+from matplotlib.patches import Rectangle
 
-#################################################
-# Training
-opt = rnnSMAP.classLSTM.optLSTM(
-    rootDB=rnnSMAP.kPath['DB_L3_NA'],
-    rootOut=rnnSMAP.kPath['OutSigma_L3_NA'],
-    syr=2015, eyr=2015, varC='varConstLst_Noah',
-    dr=0.5, modelOpt='relu',
-    model='cudnn', loss='sigma',
-    var='varLst_soilM', train='CONUSv4f1'
-)
-# runTrainLSTM.runCmdLine(opt=opt, cudaID=2, screenName=opt['out'])
+# Number of data points
+n = 5
 
-##
-rootDB = rnnSMAP.kPath['DB_L3_NA']
-rootOut = rnnSMAP.kPath['OutSigma_L3_NA']
-trainName = 'CONUSv2f1'
-testName = 'CONUSv2f1'
-out = trainName+'_y15_soilM'
-ds = rnnSMAP.classDB.DatasetPost(
-    rootDB=rootDB, subsetName=testName, yrLst=[2016, 2017])
-ds.readData(var='SMAP_AM', field='SMAP')
-ds.readPred(rootOut=rootOut, out=out, drMC=100, field='LSTM')
-ds.data2grid(field='LSTM')
-rnnSMAP.funPost.plotMap(
-    ds.LSTM_grid[:, :, 100], lat=ds.crdGrid[0], lon=ds.crdGrid[1])
+# Dummy data
+np.random.seed(19680801)
+x = np.arange(0, n, 1)
+y = np.random.rand(n) * 5.
+
+# Dummy errors (above and below)
+xerr = np.random.rand(2, n) + 0.1
+yerr = np.random.rand(2, n) + 0.2
+
+
+def make_error_boxes(ax, xdata, ydata, xerror, yerror, facecolor='r',
+                     edgecolor='k', alpha=0.5):
+
+    # Create list for all the error patches
+    errorboxes = []
+
+    # Loop over data points; create box from errors at each point
+    for x, y, xe, ye in zip(xdata, ydata, xerror.T, yerror.T):
+        rect = Rectangle((x - xe[0], y - ye[0]), xe.sum(), ye.sum())
+        errorboxes.append(rect)
+
+    # Create patch collection with specified colour/alpha
+    pc = PatchCollection(errorboxes, facecolor=facecolor, alpha=alpha,
+                         edgecolor=edgecolor)
+
+    # Add collection to axes
+    ax.add_collection(pc)
+
+    # Plot errorbars
+    artists = ax.errorbar(xdata, ydata, xerr=xerror, yerr=yerror,
+                          fmt='None', ecolor='k')
+
+    return artists
+
+
+# Create figure and axes
+fig, ax = plt.subplots(1)
+
+# Call function to create error boxes
+_ = make_error_boxes(ax, x, y, xerr, yerr)
+
+plt.show()
