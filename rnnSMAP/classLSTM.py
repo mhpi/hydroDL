@@ -142,6 +142,64 @@ class torchLSTM(torch.nn.Module):
         return out
 
 
+class torchGRU_cell(torch.nn.Module):
+    def __init__(self, *, nx, ny, hiddenSize, dr=0.5, gpu=0, doReLU=True):
+        super(torchGRU_cell, self).__init__()
+        self.nx = nx
+        self.ny = ny
+        self.hiddenSize = hiddenSize
+        self.dr = dr
+        self.doReLU = doReLU
+        self.gpu = gpu
+
+        if doReLU is True:
+            self.linearIn = torch.nn.Linear(nx, hiddenSize)
+            self.relu = torch.nn.ReLU6()
+            inputSize = hiddenSize
+        else:
+            inputSize = nx
+        self.GRU_cell = torch.nn.GRUCell(inputSize, hiddenSize)
+        self.linearOut = torch.nn.Linear(hiddenSize, ny)
+
+        if gpu > 0:
+            self = self.cuda()
+            self.is_cuda = True
+        else:
+            self.is_cuda = False
+
+    def reset_mask(self, x, h):
+        self.maskX = kuaiLSTM.createMask(x, self.dr)
+        self.maskH = kuaiLSTM.createMask(h, self.dr)
+        if self.is_cuda:
+            self.maskX = self.maskX.cuda()
+            self.maskH = self.maskH.cuda()
+
+    def forward(self, x):
+        nt = x.size(0)
+        ngrid = x.size(1)
+        h0, c0 = initLSTMstate(ngrid, self.hiddenSize, self.gpu, nDim=2)
+        ht = h0
+        ct = c0
+
+        if self.doReLU is True:
+            x0 = self.linearIn(x)
+            x0 = self.relu(x0)
+        else:
+            x0 = x
+
+        output = []
+        if self.dr > 0 and self.training is True:
+            self.reset_mask(x0[0], h0)
+
+        for i in range(0, nt):
+            xt = x0[i]
+            ht = self.GRU_cell(xt,ht)
+            output.append(ht)
+        outView = torch.cat(output, 0).view(nt, *output[0].size())
+        out = self.linearOut(outView)
+        return out
+
+
 class torchLSTM_cell(torch.nn.Module):
     def __init__(self, *, nx, ny, hiddenSize, dr=0.5, gpu=1, doReLU=True):
         super(torchLSTM_cell, self).__init__()
