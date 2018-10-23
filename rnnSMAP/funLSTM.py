@@ -94,6 +94,9 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     elif opt.model == 'torch':
         model = classLSTM.torchLSTM_cell(
             nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr, doReLU=relu)
+    elif opt.model == 'open':
+        model = classLSTM.torchLSTM_cell_open_loop(
+            nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr, doReLU=relu,gpu=opt.gpu)
     elif opt.model == 'cudnn':
         model = classLSTM.localLSTM_cuDNN(
             nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr)
