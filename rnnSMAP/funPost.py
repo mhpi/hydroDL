@@ -3,7 +3,7 @@
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap, cm
+import mpl_toolkits #import Basemap, cm
 import statsmodels.api as sm
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle

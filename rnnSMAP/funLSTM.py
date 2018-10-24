@@ -97,15 +97,18 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     elif opt.model == 'cudnn':
         model = classLSTM.localLSTM_cuDNN(
             nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr)
+    elif opt.model == 'stacked_lstm':
+        model = classLSTM.torchLSTM_stacked_cell(
+            nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr, doReLU=relu)
 
     if opt.loss == 'mse':
         crit = torch.nn.MSELoss()
     elif opt.loss == 'sigma':
         crit = classLSTM.sigmaLoss(prior=opt.lossPrior)
 
-    if opt.gpu > 0:
-        crit = crit.cuda()
-        model = model.cuda()
+    #if opt.gpu > 0:
+        #crit = crit.cuda()
+        #model = model.cuda()
 
     model.zero_grad()
     model.train()
