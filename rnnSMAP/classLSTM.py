@@ -143,7 +143,7 @@ class torchLSTM(torch.nn.Module):
 
 
 class torchLSTM_cell(torch.nn.Module):
-    def __init__(self, *, nx, ny, hiddenSize, dr=0.5, gpu=1, doReLU=True):
+    def __init__(self, *, nx, ny, hiddenSize, dr=0.5, gpu=0, doReLU=True):
         super(torchLSTM_cell, self).__init__()
         self.nx = nx
         self.ny = ny
@@ -161,18 +161,18 @@ class torchLSTM_cell(torch.nn.Module):
         self.lstmcell = torch.nn.LSTMCell(inputSize, hiddenSize)
         self.linearOut = torch.nn.Linear(hiddenSize, ny)
 
-        if gpu > 0:
-            self = self.cuda()
-            self.is_cuda = True
-        else:
-            self.is_cuda = False
+        #if gpu > 0:
+            #self = self.cuda()
+            #self.is_cuda = True
+        #else:
+            #self.is_cuda = False
 
     def reset_mask(self, x, h):
         self.maskX = kuaiLSTM.createMask(x, self.dr)
         self.maskH = kuaiLSTM.createMask(h, self.dr)
-        if self.is_cuda:
-            self.maskX = self.maskX.cuda()
-            self.maskH = self.maskH.cuda()
+        #if self.is_cuda:
+            #self.maskX = self.maskX.cuda()
+            #self.maskH = self.maskH.cuda()
 
     def forward(self, x):
         nt = x.size(0)

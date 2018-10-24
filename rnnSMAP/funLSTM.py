@@ -148,6 +148,10 @@ def trainLSTM(optDict: classLSTM.optLSTM):
         yP = model(xTrain)
         loc0 = yTrain != yTrain
         loc1 = yTrain == yTrain
+        #loc00 = np.argwhere(np.isnan(yTrain))
+        #print(np.count_nonzero(loc0))
+        #print(len(loc00[1]))
+        #print(yTrain[loc0])
         yT = torch.empty(rho, nbatch, 1)
         if opt.gpu > 0:
             yT = yT.cuda()
@@ -155,13 +159,28 @@ def trainLSTM(optDict: classLSTM.optLSTM):
             yPtemp = yP
         elif opt.loss == 'sigma':
             yPtemp = yP[:, :, 0:1]
+        #yT[loc0] = yPtemp[loc0] #do this step after comparing 2 arrays
+        yT[loc1] = yTrain[loc1] #now yT has only values we care about, rest are 0
+        #print("raj")
+        #print(np.count_nonzero(yT))
+        #print(np.count_nonzero(yT.detach().numpy()))
+        for i in range(0,yPtemp.shape[0]):#mainList
+            count=0
+            for j in range(0,yPtemp.shape[1]):#subList
+                if yT[i][j][0]:
+                    count=count+yPtemp[i][j][0]
+                else:
+                    if count!=0:
+                        yPtemp[i][j][0]=count
+                    count=yT[i][j][0]
+
         yT[loc0] = yPtemp[loc0]
-        yT[loc1] = yTrain[loc1]
+        #print(yT[0][90:])
         yT = yT.detach()
 
         # optim.zero_grad()
         model.zero_grad()
-        loss = crit(yP, yT)
+        loss = crit(yPtemp, yT)
         loss.backward()
         optim.step()
         lossEpoch = lossEpoch+loss.item()
@@ -385,6 +404,7 @@ def checkPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
 
     predName = 'test_{}_{}_{}_ep{}.csv'.format(
         test, str(syr), str(eyr), str(epoch))
+
     predFile = os.path.join(outFolder, predName)
     if not os.path.isfile(predFile):
         return False

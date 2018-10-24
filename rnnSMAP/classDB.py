@@ -141,13 +141,16 @@ class DatasetPost(Dataset):
         bPred = funLSTM.checkPred(out=out, rootOut=rootOut,
                                   test=self.subsetName, drMC=drMC, epoch=epoch,
                                   syr=self.yrLst[0], eyr=self.yrLst[-1])
+                        
         if reTest is True:
             bPred = False
+
         if bPred is False:
             print('running test')
             funLSTM.testLSTM(out=out, rootOut=rootOut, test=self.subsetName,
                              syr=self.yrLst[0], eyr=self.yrLst[-1], drMC=drMC,
                              testBatch=testBatch, epoch=epoch)
+
         dataPred, dataSigma, dataPredBatch, dataSigmaBatch = funLSTM.readPred(
             out=out, rootOut=rootOut, test=self.subsetName, epoch=epoch,
             syr=self.yrLst[0], eyr=self.yrLst[-1], drMC=drMC, reReadMC=reTest)
