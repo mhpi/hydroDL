@@ -4,6 +4,7 @@ import argparse
 import rnnSMAP
 import torch
 from . import kuaiLSTM
+import numpy as np
 
 
 class optLSTM(collections.OrderedDict):
@@ -201,6 +202,72 @@ class torchLSTM_cell(torch.nn.Module):
         outView = torch.cat(output, 0).view(nt, *output[0].size())
 
         out = self.linearOut(outView)
+        return out
+
+class torchLSTM_closed_loop_cell(torch.nn.Module): #closed loop
+    def __init__(self, *, nx, ny, hiddenSize, dr=0.5, gpu=1, doReLU=False):
+        super(torchLSTM_closed_loop_cell, self).__init__()
+        self.nx = nx
+        self.ny = ny
+        self.hiddenSize = hiddenSize
+        self.dr = dr
+        self.doReLU = doReLU
+        self.gpu = gpu
+
+        if doReLU is True:
+            self.linearIn = torch.nn.Linear(nx, hiddenSize)
+            self.relu = torch.nn.ReLU()
+            inputSize = hiddenSize
+        else:
+            inputSize = nx
+        self.lstmcell = torch.nn.LSTMCell(20, 20)
+        self.linearOut = torch.nn.Linear(20, ny)
+        self.finallinearOut = torch.nn.Bilinear(30,100, ny)
+
+        #if gpu > 0:
+            #self = self.cuda()
+            #self.is_cuda = True
+        #else:
+            #self.is_cuda = False
+
+    def reset_mask(self, x, h):
+        self.maskX = kuaiLSTM.createMask(x, self.dr)
+        self.maskH = kuaiLSTM.createMask(h, self.dr)
+        #if self.is_cuda:
+            #self.maskX = self.maskX.cuda()
+            #self.maskH = self.maskH.cuda()
+
+    def forward(self, x):
+        nt = x.size(0)
+        ngrid = x.size(1)
+        h0, c0 = initLSTMstate(ngrid, 20, 0, nDim=2)
+        ht = h0
+        ct = c0
+        x0 = x
+
+        output = []
+        if self.dr > 0 and self.training is True:
+            self.reset_mask(x0[0], h0)
+
+        pre_output=0
+        for i in range(0, nt-1):
+            xt = x0[i]
+            new_xt = np.array(xt)   #input
+            if i==0:
+                pre_output=np.array(torch.zeros(28,1)) #zero output
+                output.append(torch.from_numpy(pre_output)) #first output
+            else:
+                try:
+                    pre_output = np.array(output[-2].detach().numpy())
+                except:
+                    pre_output = output[-2]
+            final_in = np.append(new_xt, pre_output, axis=1)
+            final_in=torch.tensor(final_in)
+            ht, ct = self.lstmcell(final_in, (ht, ct))
+            next_output = self.linearOut(ht)
+            output.append(next_output)
+        #output.pop()    #pop the last next output
+        out = torch.cat(output, 0).view(nt, *output[0].size())
         return out
 
 
