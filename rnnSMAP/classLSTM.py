@@ -191,17 +191,18 @@ class torchLSTM_cell(torch.nn.Module):
         if self.dr > 0 and self.training is True:
             self.reset_mask(x0[0], h0)
 
+        total=0
         for i in range(0, nt):
             xt = x0[i]
             if self.dr > 0 and self.training is True:
                 xt = kuaiLSTM.dropMask.apply(xt, self.maskX, True)
                 ht = kuaiLSTM.dropMask.apply(ht, self.maskH, True)
             ht, ct = self.lstmcell(xt, (ht, ct))
-            output.append(ht)
+            out = self.linearOut(ht)
+            total = total + out
+            output.append(total)
         outView = torch.cat(output, 0).view(nt, *output[0].size())
-
-        out = self.linearOut(outView)
-        return out
+        return outView
 
 
 class localLSTM_cuDNN(torch.nn.Module):

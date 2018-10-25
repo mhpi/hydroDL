@@ -164,7 +164,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
         #print("raj")
         #print(np.count_nonzero(yT))
         #print(np.count_nonzero(yT.detach().numpy()))
-        for i in range(0,yPtemp.shape[0]):#mainList
+        '''for i in range(0,yPtemp.shape[0]):#mainList
             count=0
             for j in range(0,yPtemp.shape[1]):#subList
                 if yT[i][j][0]:
@@ -172,7 +172,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
                 else:
                     if count!=0:
                         yPtemp[i][j][0]=count
-                    count=yT[i][j][0]
+                    count=yT[i][j][0]'''
 
         yT[loc0] = yPtemp[loc0]
         #print(yT[0][90:])
