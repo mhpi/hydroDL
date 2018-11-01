@@ -194,8 +194,6 @@ class torchLSTM_cell_open_loop(torch.nn.Module): #open loop
             new_xt = np.array(xt)
             if raj_output is None:
                 raj_in = np.array(torch.zeros(28,1))
-                print(new_xt.shape)
-                print(raj_in.shape)
                 final_in = np.append(new_xt, raj_in, axis=1)
             else:
                 raj_in = np.array(raj_output.detach().numpy())
@@ -205,6 +203,82 @@ class torchLSTM_cell_open_loop(torch.nn.Module): #open loop
             raj_output = self.linearOut(ht)
             output.append(raj_output)
         out = torch.cat(output, 0).view(nt, *output[0].size())
+        return out
+
+class torchLSTM_cell_mc(torch.nn.Module): #open loop
+    def __init__(self, *, nx, ny, hiddenSize, dr=0.5, gpu=0, doReLU=True):
+        super(torchLSTM_cell_mc, self).__init__()
+        self.nx = nx
+        self.ny = ny
+        self.hiddenSize = hiddenSize
+        self.dr = dr
+        self.doReLU = doReLU
+        self.gpu = gpu
+
+        if doReLU is True:
+            self.linearIn = torch.nn.Linear(nx, hiddenSize)
+            self.relu = torch.nn.ReLU()
+            inputSize = hiddenSize
+        else:
+            inputSize = nx
+        self.lstmcell = torch.nn.LSTMCell(inputSize, hiddenSize)
+        self.linearOut = torch.nn.Linear(hiddenSize, ny)
+
+        if gpu > 0:
+            self = self.cuda()
+            self.is_cuda = True
+        else:
+            self.is_cuda = False
+
+    def reset_mask(self, x, h):
+        self.maskX = kuaiLSTM.createMask(x, self.dr)
+        self.maskH = kuaiLSTM.createMask(h, self.dr)
+        #if self.is_cuda:
+            #self.maskX = self.maskX.cuda()
+            #self.maskH = self.maskH.cuda()
+
+    def forward(self, x):
+        nt = x.size(0)
+        ngrid = x.size(1)
+        h0, c0 = initLSTMstate(ngrid, self.hiddenSize, self.gpu, nDim=2)
+        ht = h0
+        ct = c0
+
+        if self.doReLU is True:
+            x0 = self.linearIn(x)
+            x0 = self.relu(x0)
+        else:
+            x0 = x
+
+        output = []
+        if self.dr > 0 and self.training is True:
+            self.reset_mask(x0[0], h0)
+
+        temp_w=0
+        for i in range(0, nt):
+            xt = x0[i]
+            #if self.dr > 0 and self.training is True:
+                #xt = kuaiLSTM.dropMask.apply(xt, self.maskX, True)
+                #ht = kuaiLSTM.dropMask.apply(ht, self.maskH, True)
+            print(nt)
+            print(x0.shape)
+            print(xt.shape)
+            print(ht.shape)
+            #print(self.lstmcell.weight_ih.shape)
+            #print(self.lstmcell.weight_hh.shape)
+            ht, ct = self.lstmcell(xt, (ht, ct))
+            print(self.lstmcell.weight_ih[5].shape)
+            print(self.lstmcell.weight_hh.shape)
+            break
+            #temp_w = ht.parameters()
+            #dot_np = np.multiply(self.maskH, temp_w)
+            #new_temp = np.dot(xt,dot_np)
+            #temp_var = np.square(new_temp)
+            #vari = np.add(vari,temp_var)
+            output.append(ht)
+        outView = torch.cat(output, 0).view(nt, *output[0].size())
+
+        out = self.linearOut(outView)
         return out
 
 class torchLSTM_cell(torch.nn.Module):

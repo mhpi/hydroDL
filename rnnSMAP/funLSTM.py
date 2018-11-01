@@ -100,15 +100,18 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     elif opt.model == 'cudnn':
         model = classLSTM.localLSTM_cuDNN(
             nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr)
+    elif opt.model == 'mc':
+        model = classLSTM.torchLSTM_cell_mc(
+            nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr, doReLU=relu)
 
     if opt.loss == 'mse':
         crit = torch.nn.MSELoss()
     elif opt.loss == 'sigma':
         crit = classLSTM.sigmaLoss(prior=opt.lossPrior)
 
-    if opt.gpu > 0:
-        crit = crit.cuda()
-        model = model.cuda()
+    #if opt.gpu > 0:
+        #crit = crit.cuda()
+        #model = model.cuda()
 
     model.zero_grad()
     model.train()
@@ -131,6 +134,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     lossEpoch = 0
     timeEpoch = time.time()
     rf = open(runFile, 'a+')
+    vari=0
     for iIter in range(1, nEpoch*nIterEpoch+1):
         #############################################
         # Training iteration
@@ -149,6 +153,12 @@ def trainLSTM(optDict: classLSTM.optLSTM):
             yTrain = yTrain.cuda()
 
         yP = model(xTrain)
+        #print(torch.Size(yP.parameters()))
+        #if vari==0:
+        #    vari = yP.parameters()
+        #else:
+        #    vari = vari + yP.parameters()
+
         loc0 = yTrain != yTrain
         loc1 = yTrain == yTrain
         yT = torch.empty(rho, nbatch, 1)
@@ -176,8 +186,9 @@ def trainLSTM(optDict: classLSTM.optLSTM):
                 modelFile = os.path.join(outFolder, 'ep'+str(iEpoch)+'.pt')
                 torch.save(model, modelFile)
             rf.write(str(lossEpoch/nIterEpoch)+'\n')
-            print('Epoch {} Loss {:.3f} time {:.2f}'.format(
-                iEpoch, lossEpoch/nIterEpoch, time.time()-timeEpoch))
+            print('Epoch {} Loss {:.3f} Time {:.2f} Variance {:.2f}'.format(
+                iEpoch, lossEpoch/nIterEpoch, time.time()-timeEpoch, vari*opt.dr*(1-opt.dr)))
+            vari=0
             lossEpoch = 0
             timeEpoch = time.time()
             iEpoch = iEpoch+1
