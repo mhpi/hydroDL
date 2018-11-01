@@ -193,6 +193,9 @@ class torchGRU_cell(torch.nn.Module):
 
         for i in range(0, nt):
             xt = x0[i]
+            if self.dr > 0 and self.training is True:
+                xt = kuaiLSTM.dropMask.apply(xt, self.maskX, True)
+                ht = kuaiLSTM.dropMask.apply(ht, self.maskH, True)
             ht = self.GRU_cell(xt,ht)
             output.append(ht)
         outView = torch.cat(output, 0).view(nt, *output[0].size())
