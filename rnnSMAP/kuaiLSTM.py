@@ -9,6 +9,7 @@ from torch.nn import Parameter
 
 def createMask(x, dr):
     mask = x.new().resize_as_(x).bernoulli_(1-dr).div_(1-dr).detach_()
+    # print('droprate='+str(dr))
     return mask
 
 

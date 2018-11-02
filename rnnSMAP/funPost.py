@@ -10,13 +10,14 @@ from matplotlib.patches import Rectangle
 
 
 def plotBox(data, labelC=None, labelS=None, colorLst='rbkgcmy', title=None,
-            figsize=(8, 6)):
+            figsize=(8, 6), sharey=True):
     nc = len(data)
-    fig, axes = plt.subplots(ncols=nc, sharey=True, figsize=figsize)
+    fig, axes = plt.subplots(ncols=nc, sharey=sharey, figsize=figsize)
 
     for k in range(0, nc):
         ax = axes[k] if nc > 1 else axes
-        bp = ax.boxplot(data[k], patch_artist=True, notch=True)
+        bp = ax.boxplot(data[k], patch_artist=True,
+                        notch=True, showfliers=False)
         for kk in range(0, len(bp['boxes'])):
             plt.setp(bp['boxes'][kk], facecolor=colorLst[kk])
 
@@ -37,13 +38,6 @@ def plotBox(data, labelC=None, labelS=None, colorLst='rbkgcmy', title=None,
 
 def plotVS(x, y, *, ax=None, title=None, xlabel=None, ylabel=None,
            titleCorr=True, plot121=True, doRank=False, figsize=(8, 6)):
-    if ax is None:
-        fig = plt.figure(figsize=figsize)
-        ax = fig.subplots()
-    else:
-        fig = None
-
-    # corr = np.corrcoef(x, y)[0, 1]
     if doRank is True:
         x = scipy.stats.rankdata(x)
         y = scipy.stats.rankdata(y)
@@ -51,14 +45,15 @@ def plotVS(x, y, *, ax=None, title=None, xlabel=None, ylabel=None,
     pLr = np.polyfit(x, y, 1)
     xLr = np.array([np.min(x), np.max(x)])
     yLr = np.poly1d(pLr)(xLr)
-    ax.plot(x, y, 'b*')
-    ax.plot(xLr, yLr, 'r-')
 
-    if plot121 is True:
-        plot121Line(ax)
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.subplots()
+    else:
+        fig = None
     if title is not None:
         if titleCorr is True:
-            title = title+' '+'Pearson Correlation '+'{:.2f}'.format(corr)
+            title = title+' '+'R={:.2f}'.format(corr)
         ax.set_title(title)
     else:
         if titleCorr is True:
@@ -67,6 +62,12 @@ def plotVS(x, y, *, ax=None, title=None, xlabel=None, ylabel=None,
         ax.set_xlabel(xlabel)
     if ylabel is not None:
         ax.set_ylabel(ylabel)
+    # corr = np.corrcoef(x, y)[0, 1]
+    ax.plot(x, y, 'b*')
+    ax.plot(xLr, yLr, 'r-')
+
+    if plot121 is True:
+        plot121Line(ax)
 
     return fig, ax
 
@@ -102,10 +103,42 @@ def plotMap(grid, *, crd, lat=None, lon=None, title=None, showFig=True,
     if title is not None:
         fig.suptitle(title)
     if showFig is True:
-        fig.show(block=False)
+        fig.show()
     if saveFile is not None:
         fig.savefig(saveFile)
     return fig
+
+
+def plotConf(confLst, *, ax=None, title=None,
+             legendLst=None, figsize=(8, 6)):
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.subplots()
+    else:
+        fig = None
+
+    cmap = plt.cm.jet
+    cLst = cmap(np.linspace(0, 1, len(confLst)))
+
+    if title is not None:
+        ax.set_title(title)
+    ax.set_xlabel('Probablity')
+    ax.set_ylabel('Frequency')
+
+    for k in range(0, len(confLst)):
+        conf = confLst[k]
+        confArrayTemp = conf.flatten()
+        confArray = confArrayTemp[~np.isnan(confArrayTemp)]
+        confSort = np.sort(confArray)
+        yvals = np.arange(len(confSort))/float(len(confSort)-1)
+        if legendLst is None:
+            legStr = None
+        else:
+            legStr = legendLst[k]
+        ax.plot(confSort, yvals, color=cLst[k], label=legStr)
+    ax.legend(loc='upper left')
+    ax.plot([0, 1], [0, 1], 'k')
+    return fig, ax
 
 
 def regLinear(y, x):

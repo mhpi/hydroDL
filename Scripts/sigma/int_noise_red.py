@@ -12,18 +12,16 @@ import matplotlib
 doOpt = []
 # doOpt.append('train')
 doOpt.append('test')
-# doOpt.append('plotMap')
 doOpt.append('plotBox')
-# doOpt.append('plotVS')
 
 noiseOpt = 'SMAP'
 
-noiseNameLst = ['5e2', '1e1', '2e1', '3e1', '4e1', '5e1']
-noiseNameLstPlot = ['0.05', '0.1', '0.2', '0.3', '0.4', '0.5']
-strSigmaLst = ['sigmaX', 'sigmaMC', 'sigma']
+noiseNameLst = [None, '5e2', '1e1', '2e1', '3e1', '4e1', '5e1']
+noiseNameLstPlot = ['0', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5']
+strSigmaLst = ['sigmaX', 'sigmaMC']
 strErrLst = ['RMSE', 'ubRMSE']
 saveFolder = os.path.join(
-    rnnSMAP.kPath['dirResult'], 'Sigma', 'noise_red')
+    rnnSMAP.kPath['dirResult'], 'Sigma', 'int_noise_red')
 rootOut = rnnSMAP.kPath['OutSigma_L3_NA']
 rootDB = rnnSMAP.kPath['DB_L3_NA']
 matplotlib.rcParams.update({'font.size': 16})
@@ -44,7 +42,7 @@ if 'train' in doOpt:
     cudaIdLst = np.tile([0, 1, 2], 10)
 
     for k in range(5, len(noiseNameLst)):
-        # opt['target'] = 'SMAP_AM_rn'+noiseNameLst[k]        
+        opt['target'] = 'SMAP_AM_rn'+noiseNameLst[k]
         opt['var'] = 'varLst_Forcing'
         opt['out'] = opt['train']+'_y15_Forcing_rn'+noiseNameLst[k]
         runTrainLSTM.runCmdLine(
@@ -57,16 +55,17 @@ if 'test' in doOpt:
     statSigmaLst = list()
     for k in range(0, len(noiseNameLst)):
         testName = 'CONUSv4f1'
-        if noiseOpt == 'SMAP':
-            # targetName = 'SMAP_AM_rn'+noiseNameLst[k]
-            targetName = 'SMAP_AM'
+        
+        # targetName = 'SMAP_AM'
+        if noiseNameLst[k] is not None:
+            targetName = 'SMAP_AM_rn'+noiseNameLst[k]
             out = 'CONUSv4f1_y15_Forcing_rn'+noiseNameLst[k]
-        if noiseOpt == 'APCP':
+        else:
             targetName = 'SMAP_AM'
-            out = 'CONUSv4f1_y15_APCP_rn'+noiseNameLst[k]
+            out = 'CONUSv4f1_y15_Forcing'
 
         ds = rnnSMAP.classDB.DatasetPost(
-            rootDB=rootDB, subsetName=testName, yrLst=[2016, 2017])
+            rootDB=rootDB, subsetName=testName, yrLst=[2016,2017])
         ds.readData(var=targetName, field='SMAP')
         ds.readPred(rootOut=rootOut, out=out, drMC=100, field='LSTM')
         dsLst.append(ds)
@@ -81,28 +80,20 @@ if 'plotBox' in doOpt:
     dataTp = (statSigmaLst, statErrLst)
     attrTp = (strSigmaLst, strErrLst)
     titleTp = ('Sigma', 'Error')
-    if noiseOpt == 'SMAP':
-        saveFileTp = ('boxSigma_rnSMAP', 'boxErr_rnSMAP')
-    elif noiseOpt == 'APCP':
-        saveFileTp = ('boxSigma_rnAPCP', 'boxErr_rnAPCP')
+    saveFileTp = ('boxSigma', 'boxErr')
 
     for iP in range(0, len(dataTp)):
-        statLst = dataTp[iP]
+        dataLst = dataTp[iP]
         attrLst = attrTp[iP]
-        data = list()
-        for k in range(0, len(noiseNameLst)):
-            stat = statLst[k]
-            tempLst = list()
-            for strS in attrLst:
-                # tempLst.append(getattr(stat, strS))            
-                if strS == 'sigmaMC':
-                    tempLst.append(getattr(stat, strS))
-                else:
-                    tempLst.append(getattr(stat, strS))
-            data.append(tempLst)
-        labelS = attrLst
-        fig = rnnSMAP.funPost.plotBox(
-            data, labelC=noiseNameLstPlot, labelS=labelS,
-            title='Temporal Test ' + titleTp[iP])
-        saveFile = os.path.join(saveFolder, saveFileTp[iP])
-        fig.savefig(saveFile, dpi=1000)
+
+        for strS in attrLst:
+            plotLst = list()
+            statRef = getattr(dataLst[0], strS)
+            for data in dataLst:
+                stat = getattr(data, strS)
+                plotLst.append(stat/statRef)
+            fig = rnnSMAP.funPost.plotBox(
+                plotLst, labelC=noiseNameLstPlot, labelS=None,
+                title='Temporal Test ' + strS)
+            saveFile = os.path.join(saveFolder, 'box_'+strS)
+            fig.savefig(saveFile, dpi=300)

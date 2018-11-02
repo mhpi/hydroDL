@@ -195,5 +195,16 @@ class DatasetPost(Dataset):
         # dataSigma = np.sqrt(np.mean(dataSigmaBatch**2, axis=2))
         statSigma = classPost.statSigma(
             dataMC=dataPredBatch, dataSigma=dataSigma)
-        # setattr(self, 'statSigma_'+field, statSigma)
+        setattr(self, 'statSigma_'+field, statSigma)
         return statSigma
+
+    def statCalConf(self, *, predField='LSTM', targetField='SMAP'):
+        dataPred = getattr(self, predField)
+        dataTarget = getattr(self, targetField)
+        if hasattr(self, 'statSigma_'+predField):
+            statSigma = getattr(self, 'statSigma_'+predField)
+        else:
+            statSigma = self.statCalSigma(field=predField)
+        statConf = classPost.statConf(
+            statSigma=statSigma, dataPred=dataPred, dataTarget=dataTarget)
+        return statConf

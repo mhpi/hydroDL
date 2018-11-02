@@ -38,13 +38,14 @@ def initPath():
 
 kPath = initPath()
 
+from . import kuaiLSTM
 from . import classDB
 from . import funDB
 from . import classLSTM
 from . import funLSTM
 from . import classPost
 from . import funPost
-from . import kuaiLSTM
+from . import funWeight
 
 
 def reload():
@@ -55,3 +56,4 @@ def reload():
     imp.reload(classPost)
     imp.reload(funPost)
     imp.reload(kuaiLSTM)
+    imp.reload(funWeight)

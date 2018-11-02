@@ -3,6 +3,9 @@ import rnnSMAP
 from rnnSMAP import runTrainLSTM
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy
+import pylab
+import scipy.stats as stats
 
 import imp
 imp.reload(rnnSMAP)
@@ -13,9 +16,9 @@ rnnSMAP.reload()
 doOpt = []
 # doOpt.append('train')
 doOpt.append('test')
-doOpt.append('plotMap')
-doOpt.append('plotBox')
-doOpt.append('plotVS')
+# doOpt.append('plotMap')
+# doOpt.append('plotBox')
+# doOpt.append('plotVS')
 
 trainNameLst = ['CONUSv2f1']
 testNameLst = ['CONUSv2f1']
@@ -68,6 +71,39 @@ if 'test' in doOpt:
         statSigmaLst.append(statSigma)
 
 #################################################
+# plot confidence
+s = np.sqrt(statSigma.sigmaMC_mat**2+statSigma.sigmaX_mat**2)
+u = ds.LSTM
+y = ds.SMAP
+conf = scipy.special.erf(np.abs(y-u)/s/np.sqrt(2))
+confArrayTemp = conf.flatten()
+confArray = confArrayTemp[~np.isnan(confArrayTemp)]
+confSort = np.sort(confArray)
+yvals = np.arange(len(confSort))/float(len(confSort)-1)
+plt.plot(confSort, yvals)
+plt.plot([0, 1], [0, 1])
+plt.show()
+
+#################################################
+# plot norm distribution
+s = statSigma.sigmaX_mat
+u = ds.LSTM
+y = ds.SMAP
+yNorm = (u-y)/s
+yNormArrayTemp = yNorm.flatten()
+yNormArray = yNormArrayTemp[~np.isnan(yNormArrayTemp)]
+yNormSort = np.sort(yNormArray)
+yvals = np.arange(len(yNormSort))/float(len(yNormSort)-1)
+k2, p = stats.normaltest(yNormArray)
+stats.probplot(yNormArray, dist="norm", plot=plt)
+plt.show()
+
+x = yNormArray
+count, bins, ignored = plt.hist(x, 1000, normed=True)
+plt.plot(bins, 1/(1 * np.sqrt(2 * np.pi)) *np.exp( - (bins - 0)**2 / (2 * 1**2) ),linewidth=2, color='r')
+plt.show()
+
+#################################################
 if 'plotMap' in doOpt:
     cRangeErr = [0, 0.1]
 
@@ -105,7 +141,7 @@ if 'plotBox' in doOpt:
         for strS in strSigmaLst:
             tempLst.append(getattr(statSigma, strS))
         data.append(tempLst)
-    fig = rnnSMAP.funPost.plotBox(
+    rnnSMAP.funPost.plotBox(
         data, labelC=trainNameLst, labelS=strSigmaLst, title='Temporal Test CONUS')
     saveFile = os.path.join(saveFolder, 'boxPlot_sigma')
 

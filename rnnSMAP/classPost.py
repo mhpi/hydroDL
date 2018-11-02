@@ -35,8 +35,19 @@ class statSigma(object):
             self.sigmaMC_mat = np.std(dataMC, axis=2)
             self.sigmaMC = np.nanmean(self.sigmaMC_mat, axis=1)
         if dataSigma is not None:
-            self.sigmaX_mat = dataSigma               
+            self.sigmaX_mat = dataSigma
             self.sigmaX = np.nanmean(self.sigmaX_mat, axis=1)
         if dataMC is not None and dataSigma is not None:
             self.sigma_mat = np.sqrt(self.sigmaMC_mat**2+self.sigmaX_mat**2)
             self.sigma = np.nanmean(self.sigma_mat, axis=1)
+
+
+class statConf(object):
+    def __init__(self, *, statSigma, dataPred, dataTarget):
+        u = dataPred
+        y = dataTarget
+        sigmaLst = ['sigmaMC', 'sigmaX', 'sigma']
+        for sigmaStr in sigmaLst:
+            s = getattr(statSigma, sigmaStr+'_mat')
+            conf = scipy.special.erf(np.abs(y-u)/s/np.sqrt(2))
+            setattr(self, 'conf_' + sigmaStr, conf)

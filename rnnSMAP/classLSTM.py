@@ -222,7 +222,6 @@ class localLSTM_cuDNN(torch.nn.Module):
         self.lstm = kuaiLSTM.cudnnLSTM(
             inputSize=inputSize, hiddenSize=hiddenSize, dr=dr)
         self.linearOut = torch.nn.Linear(hiddenSize, ny)
-        self.is_cuda = True
         self.gpu = 1
 
     def forward(self, x, doDropMC=False):
