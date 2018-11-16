@@ -19,6 +19,7 @@ opt = rnnSMAP.classLSTM.optLSTM(
     model='cudnn', loss='sigma', out='CONUSv4f1_y15_Forcing'
 )
 # rnnSMAP.funLSTM.trainLSTM(opt)
+# runTrainLSTM.runCmdLine(opt=opt, cudaID=1, screenName=opt['out'])
 
 # test
 out = opt['out']

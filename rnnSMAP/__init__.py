@@ -17,9 +17,9 @@ def initPath():
         dirDB = os.path.join(
             os.path.sep, 'mnt', 'sdc', 'rnnSMAP', 'Database_SMAPgrid')
         dirOut = os.path.join(
-            os.path.sep, 'mnt', 'sdc', 'rnnSMAP', 'Output_SMAPgrid')
+            os.path.sep, 'mnt', 'sdb', 'rnnSMAP', 'Output_SMAPgrid')
         dirResult = os.path.join(
-            os.path.sep, 'mnt', 'sdc', 'rnnSMAP', 'Result_SMAPgrid')
+            os.path.sep, 'mnt', 'sdb', 'rnnSMAP', 'Result_SMAPgrid')
     kPath = collections.OrderedDict(
         DB_L3_CONUS=os.path.join(dirDB, 'Daily_L3_CONUS'),
         DB_L3_Global=os.path.join(dirDB, 'Daily_L3'),

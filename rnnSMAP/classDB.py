@@ -151,8 +151,15 @@ class DatasetPost(Dataset):
         dataPred, dataSigma, dataPredBatch, dataSigmaBatch = funLSTM.readPred(
             out=out, rootOut=rootOut, test=self.subsetName, epoch=epoch,
             syr=self.yrLst[0], eyr=self.yrLst[-1], drMC=drMC, reReadMC=reTest)
-        setattr(self, field, dataPred)
-        setattr(self, field+'_Sigma', dataSigma)
+
+        if drMC == 0:
+            setattr(self, field, dataPred)
+            setattr(self, field+'_Sigma', dataSigma)
+        else:
+            dataPredMean = np.mean(dataPredBatch, axis=2)
+            dataSigmaMean = np.sqrt(np.mean(dataSigmaBatch**2, axis=2))
+            setattr(self, field, dataPredMean)
+            setattr(self, field+'_Sigma', dataSigmaMean)
         setattr(self, field+'_MC', dataPredBatch)
         setattr(self, field+'_SigmaMC', dataSigmaBatch)
 
@@ -191,20 +198,23 @@ class DatasetPost(Dataset):
         # dataPred = getattr(self, field)
         dataPredBatch = getattr(self, field+'_MC')
         dataSigma = getattr(self, field+'_Sigma')
-        # dataSigmaBatch = getattr(self, field+'_SigmaMC')
+        dataSigmaBatch = getattr(self, field+'_SigmaMC')
         # dataSigma = np.sqrt(np.mean(dataSigmaBatch**2, axis=2))
         statSigma = classPost.statSigma(
-            dataMC=dataPredBatch, dataSigma=dataSigma)
+            dataMC=dataPredBatch, dataSigma=dataSigma,
+            dataSigmaBatch=dataSigmaBatch)
         setattr(self, 'statSigma_'+field, statSigma)
         return statSigma
 
     def statCalConf(self, *, predField='LSTM', targetField='SMAP'):
         dataPred = getattr(self, predField)
         dataTarget = getattr(self, targetField)
+        dataMC = getattr(self, predField+'_MC')
         if hasattr(self, 'statSigma_'+predField):
             statSigma = getattr(self, 'statSigma_'+predField)
         else:
             statSigma = self.statCalSigma(field=predField)
         statConf = classPost.statConf(
-            statSigma=statSigma, dataPred=dataPred, dataTarget=dataTarget)
+            statSigma=statSigma, dataPred=dataPred, dataTarget=dataTarget,
+            dataMC=dataMC)
         return statConf

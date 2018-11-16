@@ -16,12 +16,18 @@ rnnSMAP.reload()
 doOpt = []
 # doOpt.append('train')
 doOpt.append('test')
+doOpt.append('plotConf')
+doOpt.append('plotNorm')
+doOpt.append('plotScale')
 # doOpt.append('plotMap')
 # doOpt.append('plotBox')
 # doOpt.append('plotVS')
 
-trainNameLst = ['CONUSv2f1']
-testNameLst = ['CONUSv2f1']
+trainName = 'CONUSv2f1'
+testName = 'CONUSv2f1'
+out = trainName+'_y15_Forcing'
+yrLst = [[2015], [2016], [2017]]
+caseStrLst = ['y15', 'y16', 'y17']
 strSigmaLst = ['sigmaX', 'sigmaMC', 'sigma']
 strErrLst = ['RMSE', 'ubRMSE']
 saveFolder = os.path.join(
@@ -56,52 +62,119 @@ if 'test' in doOpt:
     dsLst = list()
     statErrLst = list()
     statSigmaLst = list()
-    for k in range(0, len(trainNameLst)):
-        out = trainNameLst[k]+'_y15_Forcing'
-        testName = testNameLst[k]
+    statConfLst = list()
+    statNormLst = list()
+    for k in range(0, len(caseStrLst)):
         ds = rnnSMAP.classDB.DatasetPost(
-            rootDB=rootDB, subsetName=testName, yrLst=[2016, 2017])
+            rootDB=rootDB, subsetName=testName, yrLst=yrLst[k])
         ds.readData(var='SMAP_AM', field='SMAP')
         ds.readPred(rootOut=rootOut, out=out, drMC=100, field='LSTM')
         statErr = ds.statCalError(predField='LSTM', targetField='SMAP')
         statSigma = ds.statCalSigma(field='LSTM')
+        statConf = ds.statCalConf(predField='LSTM', targetField='SMAP')
+        statNorm = rnnSMAP.classPost.statNorm(
+            statSigma=statSigma, dataPred=ds.LSTM, dataTarget=ds.SMAP)
 
         dsLst.append(ds)
         statErrLst.append(statErr)
         statSigmaLst.append(statSigma)
+        statConfLst.append(statConf)
+        statNormLst.append(statNorm)
+
 
 #################################################
 # plot confidence
-s = np.sqrt(statSigma.sigmaMC_mat**2+statSigma.sigmaX_mat**2)
-u = ds.LSTM
-y = ds.SMAP
-conf = scipy.special.erf(np.abs(y-u)/s/np.sqrt(2))
-confArrayTemp = conf.flatten()
-confArray = confArrayTemp[~np.isnan(confArrayTemp)]
-confSort = np.sort(confArray)
-yvals = np.arange(len(confSort))/float(len(confSort)-1)
-plt.plot(confSort, yvals)
-plt.plot([0, 1], [0, 1])
-plt.show()
+if 'plotConf' in doOpt:
+    fig, axes = plt.subplots(ncols=len(caseStrLst), figsize=(12, 6))
+    for k in range(0, len(caseStrLst)):
+        statConf = statConfLst[k]
+        plotLst = [statConf.conf_sigmaX,
+                   statConf.conf_sigmaMC,
+                   statConf.conf_sigma]
+        legendLst = ['simgaX', 'sigmaMC', 'sigmaComb']
+        rnnSMAP.funPost.plotCDF(plotLst, ax=axes[k], legendLst=legendLst)
+        axes[k].set_title(caseStrLst[k])
+    fig.show()
+
 
 #################################################
 # plot norm distribution
-s = statSigma.sigmaX_mat
-u = ds.LSTM
-y = ds.SMAP
-yNorm = (u-y)/s
-yNormArrayTemp = yNorm.flatten()
-yNormArray = yNormArrayTemp[~np.isnan(yNormArrayTemp)]
-yNormSort = np.sort(yNormArray)
-yvals = np.arange(len(yNormSort))/float(len(yNormSort)-1)
-k2, p = stats.normaltest(yNormArray)
-stats.probplot(yNormArray, dist="norm", plot=plt)
-plt.show()
+if 'plotNorm' in doOpt:
+    fig, axes = plt.subplots(ncols=len(caseStrLst), figsize=(12, 6))
+    for k in range(0, len(caseStrLst)):
+        statNorm = statNormLst[k]
+        plotLst = [statNorm.yNorm_sigmaX,
+                   statNorm.yNorm_sigmaMC,
+                   statNorm.yNorm_sigma]
+        legendLst = ['simgaX', 'sigmaMC', 'sigmaComb']
+        rnnSMAP.funPost.plotCDF(
+            plotLst, ax=axes[k], legendLst=legendLst, ref='norm')
+        axes[k].set_xlim([-5, 5])
+        fig.show()
 
-x = yNormArray
-count, bins, ignored = plt.hist(x, 1000, normed=True)
-plt.plot(bins, 1/(1 * np.sqrt(2 * np.pi)) *np.exp( - (bins - 0)**2 / (2 * 1**2) ),linewidth=2, color='r')
-plt.show()
+#################################################
+# plot scale result
+if 'plotScale' in doOpt:
+    fig, axes = plt.subplots(ncols=3, nrows=2, figsize=(12, 8))
+
+    for k in range(0, len(caseStrLst)):
+        statConf = statConfLst[k]
+        plotLstConf = [statConf.conf_sigmaX,
+                       statConf.conf_sigmaMC,
+                       statConf.conf_sigma]
+        statNorm = statNormLst[k]
+        plotLstNorm = [statNorm.yNorm_sigmaX,
+                       statNorm.yNorm_sigmaMC,
+                       statNorm.yNorm_sigma]
+        legendLst = ['simgaX', 'sigmaMC', 'sigmaComb']
+        s = statSigmaLst[k].sigmaMC_mat
+        y = dsLst[k].SMAP
+        u = dsLst[k].LSTM
+        cmap = plt.cm.jet
+        cLst = cmap(np.linspace(0, 1, 7))
+        if caseStrLst[k] is 'y15':
+            sF15 = rnnSMAP.funPost.scaleSigma(s, u, y)
+            s1 = s*sF15
+            conf1, yNorm1 = rnnSMAP.funPost.reCalSigma(s1, u, y)
+            s2 = np.sqrt(np.square(s1)+np.square(statSigmaLst[k].sigma_mat))
+            conf2, yNorm2 = rnnSMAP.funPost.reCalSigma(s2, u, y)
+            plotLstConf.extend([conf1, conf2])
+            plotLstNorm.extend([yNorm1, yNorm2])
+            legendLst.extend(['sigmaMC_scaleY15', 'sigmaComb_scaleY15'])
+        if caseStrLst[k] is 'y16':
+            sF16 = rnnSMAP.funPost.scaleSigma(s, u, y)
+            s1 = s*sF15
+            conf1, yNorm1 = rnnSMAP.funPost.reCalSigma(s1, u, y)
+            s2 = s*sF16
+            conf2, yNorm2 = rnnSMAP.funPost.reCalSigma(s2, u, y)
+            s3 = np.sqrt(np.square(s1)+np.square(statSigmaLst[k].sigma_mat))
+            conf3, yNorm3 = rnnSMAP.funPost.reCalSigma(s3, u, y)
+            s4 = np.sqrt(np.square(s2)+np.square(statSigmaLst[k].sigma_mat))
+            conf4, yNorm4 = rnnSMAP.funPost.reCalSigma(s4, u, y)
+            plotLstConf.extend([conf1, conf2, conf3, conf4])
+            plotLstNorm.extend([yNorm1, yNorm2, yNorm3, yNorm4])
+            legendLst.extend(['sigmaMC_scaleY15', 'sigmaComb_scaleY15',
+                              'sigmaMC_scaleY16', 'sigmaComb_scaleY16'])
+        if caseStrLst[k] is 'y17':
+            sF17 = rnnSMAP.funPost.scaleSigma(s, u, y)
+            s1 = s*sF15
+            conf1, yNorm1 = rnnSMAP.funPost.reCalSigma(s1, u, y)
+            s2 = s*sF16
+            conf2, yNorm2 = rnnSMAP.funPost.reCalSigma(s2, u, y)
+            s3 = np.sqrt(np.square(s1)+np.square(statSigmaLst[k].sigma_mat))
+            conf3, yNorm3 = rnnSMAP.funPost.reCalSigma(s3, u, y)
+            s4 = np.sqrt(np.square(s2)+np.square(statSigmaLst[k].sigma_mat))
+            conf4, yNorm4 = rnnSMAP.funPost.reCalSigma(s4, u, y)
+            plotLstConf.extend([conf1, conf2, conf3, conf4])
+            plotLstNorm.extend([yNorm1, yNorm2, yNorm3, yNorm4])
+            legendLst.extend(['sigmaMC_scaleY15', 'sigmaComb_scaleY15',
+                              'sigmaMC_scaleY16', 'sigmaComb_scaleY16'])
+        rnnSMAP.funPost.plotCDF(
+            plotLstConf, ax=axes[0, k], legendLst=legendLst, cLst=cLst)
+        rnnSMAP.funPost.plotCDF(
+            plotLstNorm, ax=axes[1, k], legendLst=legendLst, ref='norm', cLst=cLst)
+        axes[1, k].set_xlim([-5, 5])
+    fig.show()
 
 #################################################
 if 'plotMap' in doOpt:

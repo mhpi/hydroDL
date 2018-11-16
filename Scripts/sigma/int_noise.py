@@ -18,8 +18,8 @@ doOpt.append('train')
 # noiseNameLst = ['5e4', '1e3', '2e3', '5e3',
 #                 '1e2', '2e2', '5e2', '1e1', '2e1', '5e1']
 
-noiseNameLst = ['1e2', '2e2', '3e2', '4e2',
-                '5e2', '6e2', '7e2', '8e2', '9e2', '1e1']
+noiseNameLst = ['1e2', '2e2', '3e2', '4e2', '5e2',
+                '6e2', '7e2', '8e2', '9e2', '1e1']
 strSigmaLst = ['sigmaX', 'sigmaMC', 'sigma']
 strErrLst = ['RMSE', 'ubRMSE']
 saveFolder = os.path.join(
@@ -31,8 +31,7 @@ rootDB = rnnSMAP.kPath['DB_L3_NA']
 if 'train' in doOpt:
     opt = rnnSMAP.classLSTM.optLSTM(
         rootDB=rootDB, rootOut=rootOut,
-        syr=2015, eyr=2015,
-        var='varLst_soilM', varC='varConstLst_Noah',
+        syr=2015, eyr=2015, varC='varConstLst_Noah',
         dr=0.5, modelOpt='relu', model='cudnn',
         loss='sigma'
     )

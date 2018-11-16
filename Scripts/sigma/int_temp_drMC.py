@@ -21,9 +21,8 @@ doOpt.append('plotConf')
 # doOpt.append('plotVS')
 
 rootDB = rnnSMAP.kPath['DB_L3_NA']
-rootOut = rnnSMAP.kPath['OutSigma_L3_NA']
-drLst = np.arange(0, 1, 0.1)
-drStrLst = ["%02d" % (x*100) for x in drLst]
+rootOut = rnnSMAP.kPath['Out_L3_NA']
+drStrLst = ['00', '20', '50', '80']
 testName = 'CONUSv4f1'
 yrLst = [2016, 2017]
 saveFolder = os.path.join(
@@ -48,17 +47,17 @@ if 'train' in doOpt:
 
 #################################################
 if 'test' in doOpt:
-    rootOut = rnnSMAP.kPath['OutSigma_L3_NA']
-    rootDB = rnnSMAP.kPath['DB_L3_NA']
-
     predField = 'LSTM'
     targetField = 'SMAP'
     dsLst = list()
     statErrLst = list()
     statSigmaLst = list()
     statConfLst = list()
-    for k in range(0, len(drLst)):
-        out = 'CONUSv4f1_y15_Forcing_dr'+drStrLst[k]
+    for k in range(0, len(drStrLst)):
+        if drStrLst[k] is '50':
+            out = 'CONUSv4f1_y15_Forcing'
+        else:
+            out = 'CONUSv4f1_y15_Forcing_dr'+drStrLst[k]
         testName = testName
         ds = rnnSMAP.classDB.DatasetPost(
             rootDB=rootDB, subsetName=testName, yrLst=yrLst)
@@ -75,22 +74,13 @@ if 'test' in doOpt:
 
 #################################################
 if 'plotConf' in doOpt:
-    fig, axes = plt.subplots(ncols=3, figsize=(12, 6))
-
-    confXLst = list()
+    fig, ax = plt.subplots(figsize=(12, 6))
     confMCLst = list()
-    confLst = list()
     for k in range(0, len(drStrLst)):
         statConf = statConfLst[k]
-        confXLst.append(statConf.conf_sigmaX)
         confMCLst.append(statConf.conf_sigmaMC)
-        confLst.append(statConf.conf_sigma)
-    rnnSMAP.funPost.plotCDF(confXLst, ax=axes[0], legendLst=drStrLst)
-    axes[0].set_title('sigmaX')
-    rnnSMAP.funPost.plotCDF(confMCLst, ax=axes[1], legendLst=drStrLst)
-    axes[1].set_title('sigmaMC')
-    rnnSMAP.funPost.plotCDF(confLst, ax=axes[2], legendLst=drStrLst)
-    axes[2].set_title('sigmaComb')
+    rnnSMAP.funPost.plotCDF(confMCLst, ax=ax, legendLst=drStrLst)
+    ax.set_title('sigmaMC')
     fig.show()
     saveFile = os.path.join(saveFolder, 'dr_conf.png')
     fig.savefig(saveFile, dpi=600)

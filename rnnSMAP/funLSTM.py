@@ -90,7 +90,8 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     relu = 'relu' in modelOpt
     if opt.model == 'slow':
         model = classLSTM.localLSTM_slow(
-            nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, drMethod=opt.drMethod, gpu=opt.gpu, doReLU=relu, doTied=tied)
+            nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, drMethod=opt.drMethod,
+            gpu=opt.gpu, doReLU=relu, doTied=tied)
     elif opt.model == 'torch':
         model = classLSTM.torchLSTM_cell(
             nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr, doReLU=relu)
@@ -191,7 +192,6 @@ def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0, testBatch=0):
 
     #############################################
     # load data
-    #############################################
     dataset = classDB.DatasetLSTM(
         rootDB=opt.rootDB, subsetName=test,
         yrLst=np.arange(syr, eyr+1),
@@ -208,13 +208,11 @@ def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0, testBatch=0):
 
     #############################################
     # Load Model
-    #############################################
     modelFile = os.path.join(outFolder, 'ep'+str(epoch)+'.pt')
     model = torch.load(modelFile)
 
     #############################################
     # save prediction
-    #############################################
     model.train(mode=False)
     if testBatch > 0:
         yP = torch.zeros([nt, ngrid, ny])
@@ -246,6 +244,8 @@ def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0, testBatch=0):
         print('saving '+sigmaFile)
         pd.DataFrame(sOut).to_csv(sigmaFile, header=False, index=False)
 
+    #############################################
+    # MC dropout
     if drMC > 0:
         # model.train()
         mcName = 'test_{}_{}_{}_ep{}_drM{}'.format(
@@ -295,7 +295,8 @@ def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0, testBatch=0):
             pd.DataFrame(yOut).to_csv(predFile, header=False, index=False)
 
 
-def readPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0, reReadMC=False):
+def readPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0,
+             reReadMC=False):
     outFolder = os.path.join(rootOut, out)
     optDict = loadOptLSTM(outFolder)
     opt = Namespace(**optDict)
@@ -405,5 +406,3 @@ def checkPred(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0):
             return False
 
     return True
-
-    

@@ -63,7 +63,7 @@ def plotVS(x, y, *, ax=None, title=None, xlabel=None, ylabel=None,
     if ylabel is not None:
         ax.set_ylabel(ylabel)
     # corr = np.corrcoef(x, y)[0, 1]
-    ax.plot(x, y, 'b*')
+    ax.plot(x, y, 'b.')
     ax.plot(xLr, yLr, 'r-')
 
     if plot121 is True:
@@ -80,18 +80,19 @@ def plot121Line(ax, spec='k-'):
     ax.plot([vmin, vmax], [vmin, vmax], spec)
 
 
-def plotMap(grid, *, crd, lat=None, lon=None, title=None, showFig=True,
-            saveFile=None, cRange=None):
+def plotMap(grid, *, crd, ax=None, lat=None, lon=None, title=None,
+            cRange=None):
     if lat is None and lon is None:
         lat = crd[0]
         lon = crd[1]
     vmin = cRange[0] if cRange is not None else None
     vmax = cRange[1] if cRange is not None else None
 
-    fig = plt.figure(figsize=(8, 4))
+    if ax is None:
+        fig, ax = plt.figure(figsize=(8, 4))
     map = Basemap(llcrnrlat=lat[-1], urcrnrlat=lat[0],
                   llcrnrlon=lon[0], urcrnrlon=lon[-1],
-                  projection='cyl', resolution='c')
+                  projection='cyl', resolution='c', ax=ax)
     map.drawcoastlines()
     map.drawstates()
     map.drawcountries()
@@ -101,44 +102,79 @@ def plotMap(grid, *, crd, lat=None, lon=None, title=None, showFig=True,
     # cs=map.scatter(xx, yy, c=grid,s=10,cmap=plt.cm.jet,edgecolors=None, linewidth=0)
     cbar = map.colorbar(cs, location='bottom', pad="5%")
     if title is not None:
-        fig.suptitle(title)
-    if showFig is True:
-        fig.show()
-    if saveFile is not None:
-        fig.savefig(saveFile)
-    return fig
+        ax.set_title(title)
+    if ax is None:
+        return fig
 
 
-def plotConf(confLst, *, ax=None, title=None,
-             legendLst=None, figsize=(8, 6)):
+def plotCDF(xLst, *, ax=None, title=None, legendLst=None, figsize=(8, 6),
+            ref='121', cLst=None, xlabel=None, ylabel=None, calDiff='RMSE'):
     if ax is None:
         fig = plt.figure(figsize=figsize)
         ax = fig.subplots()
     else:
         fig = None
 
-    cmap = plt.cm.jet
-    cLst = cmap(np.linspace(0, 1, len(confLst)))
+    if cLst is None:
+        cmap = plt.cm.jet
+        cLst = cmap(np.linspace(0, 1, len(xLst)))
 
     if title is not None:
         ax.set_title(title)
-    ax.set_xlabel('Probablity')
-    ax.set_ylabel('Frequency')
+    if xlabel is None:
+        ax.set_xlabel('Value')
+    else:
+        ax.set_xlabel(xlabel)
+    if ylabel is None:
+        ax.set_ylabel('Frequency')
+    else:
+        ax.set_ylabel(ylabel)
 
-    for k in range(0, len(confLst)):
-        conf = confLst[k]
-        confArrayTemp = conf.flatten()
-        confArray = confArrayTemp[~np.isnan(confArrayTemp)]
-        confSort = np.sort(confArray)
-        yvals = np.arange(len(confSort))/float(len(confSort)-1)
+    xOutLst = list()
+    for k in range(0, len(xLst)):
+        x = xLst[k]
+        xSort = flatData(x)
+        yvals = np.arange(len(xSort))/float(len(xSort)-1)
+        xOutLst.append(xSort)
         if legendLst is None:
             legStr = None
         else:
             legStr = legendLst[k]
-        ax.plot(confSort, yvals, color=cLst[k], label=legStr)
+
+        if calDiff is 'RMSE':
+            if ref is '121':
+                diff = np.sqrt(((xSort - yvals) ** 2).mean())
+                legStr = legStr+' RMSE='+'%.3f' % diff
+
+        ax.plot(xSort, yvals, color=cLst[k], label=legStr)
+
+    if ref is '121':
+        ax.plot([0, 1], [0, 1], 'k', label='y=x')
+    if ref is 'norm':
+        xNorm = np.linspace(-5, 5, 1000)
+        normCdf = scipy.stats.norm.cdf(xNorm, 0, 1)
+        ax.plot(xNorm, normCdf, 'k', label='Gaussian')
     ax.legend(loc='upper left')
-    ax.plot([0, 1], [0, 1], 'k')
-    return fig, ax
+    return fig, ax, xOutLst
+
+
+def flatData(x):
+    xArrayTemp = x.flatten()
+    xArray = xArrayTemp[~np.isnan(xArrayTemp)]
+    xSort = np.sort(xArray)
+    return(xSort)
+
+
+def scaleSigma(s, u, y):
+    yNorm = (y-u)/s
+    _, sF = scipy.stats.norm.fit(flatData(yNorm))
+    return sF
+
+
+def reCalSigma(s, u, y):
+    conf = scipy.special.erf(np.abs(y-u)/s/np.sqrt(2))
+    yNorm = (y-u)/s
+    return conf, yNorm
 
 
 def regLinear(y, x):
