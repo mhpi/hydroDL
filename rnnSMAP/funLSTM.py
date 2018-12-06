@@ -100,6 +100,9 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     elif opt.model == 'gru':
         model = classLSTM.torchGRU_cell(
             nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr)
+    elif opt.model=='gru_my_mc':
+        model = classLSTM.torchGRU_cell_my_implementation(
+            nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr)
 
     if opt.loss == 'mse':
         crit = torch.nn.MSELoss()
@@ -160,7 +163,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
 
         # optim.zero_grad()
         model.zero_grad()
-        loss = crit(yP, yT)
+        loss = crit(yP, yT) #+ norm*0.001
         loss.backward()
         optim.step()
         lossEpoch = lossEpoch+loss.item()
