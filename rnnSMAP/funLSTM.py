@@ -103,6 +103,9 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     elif opt.model == 'mc':
         model = classLSTM.torchLSTM_cell_mc(
             nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr, doReLU=relu)
+    elif opt.model == 'my':
+        model = classLSTM.torchLSTM_cell_my_implementation(
+            nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr, doReLU=relu)
 
     if opt.loss == 'mse':
         crit = torch.nn.MSELoss()
@@ -118,6 +121,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
 
     # construct model before optim will automatically make it cuda
     optim = torch.optim.Adadelta(model.parameters())
+    print(model.parameters())
 
     xTrain = torch.zeros([rho, nbatch, nx], requires_grad=False)
     yTrain = torch.zeros([rho, nbatch, ny], requires_grad=False)
@@ -135,6 +139,8 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     timeEpoch = time.time()
     rf = open(runFile, 'a+')
     vari=0
+    wt_ih=np.zeros((100,1))
+    wt_hh=np.zeros((100,1))
     for iIter in range(1, nEpoch*nIterEpoch+1):
         #############################################
         # Training iteration
@@ -152,13 +158,12 @@ def trainLSTM(optDict: classLSTM.optLSTM):
             xTrain = xTrain.cuda()
             yTrain = yTrain.cuda()
 
-        yP = model(xTrain)
-        #print(torch.Size(yP.parameters()))
-        #if vari==0:
-        #    vari = yP.parameters()
-        #else:
-        #    vari = vari + yP.parameters()
-
+        if opt.model=='mc':
+            yP, wt_ih = model(xTrain,wt_ih)
+        elif opt.model=='my':
+            yP,norm = model(xTrain)
+        else:
+            yP = model(xTrain)
         loc0 = yTrain != yTrain
         loc1 = yTrain == yTrain
         yT = torch.empty(rho, nbatch, 1)
@@ -175,6 +180,9 @@ def trainLSTM(optDict: classLSTM.optLSTM):
         # optim.zero_grad()
         model.zero_grad()
         loss = crit(yP, yT)
+        print(norm*0.001)
+        loss = loss + norm*0.001
+        #print(loss)
         loss.backward()
         optim.step()
         lossEpoch = lossEpoch+loss.item()
@@ -186,8 +194,8 @@ def trainLSTM(optDict: classLSTM.optLSTM):
                 modelFile = os.path.join(outFolder, 'ep'+str(iEpoch)+'.pt')
                 torch.save(model, modelFile)
             rf.write(str(lossEpoch/nIterEpoch)+'\n')
-            print('Epoch {} Loss {:.3f} Time {:.2f} Variance {:.2f}'.format(
-                iEpoch, lossEpoch/nIterEpoch, time.time()-timeEpoch, vari*opt.dr*(1-opt.dr)))
+            print('Epoch {} Loss {:.3f} Time {:.2f}'.format(
+                iEpoch, lossEpoch/nIterEpoch, time.time()-timeEpoch))
             vari=0
             lossEpoch = 0
             timeEpoch = time.time()
@@ -195,6 +203,10 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     rf.close()
     sys.stdout.close()
 
+
+def get_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']
 
 def testLSTM(*, rootOut, out, test, syr, eyr, epoch=None, drMC=0, testBatch=0):
     outFolder = os.path.join(rootOut, out)
