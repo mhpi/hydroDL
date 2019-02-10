@@ -1,6 +1,7 @@
 
 import numpy as np
 import scipy
+import time
 
 
 class statError(object):
@@ -46,6 +47,62 @@ class statSigma(object):
 
 
 class statConf(object):
+    def __init__(self, *, statSigma, dataPred, dataTarget, dataMC, rmBias=False):
+        u = dataPred
+        y = dataTarget
+        if rmBias is True:
+            [ng, nt] = u.shape
+            b = np.nanmean(u, axis=1)-np.nanmean(y, axis=1)
+            u = u-np.tile(b[:, None], [1, nt])
+        # z = np.nanmean(dataMC, axis=2)
+        # sigmaLst = ['sigmaMC', 'sigmaX', 'sigma']
+
+        if hasattr(statSigma, 'sigmaX_mat'):
+            s = getattr(statSigma, 'sigmaX_mat')
+            conf = scipy.special.erf(-np.abs(y-u)/s/np.sqrt(2))+1
+            setattr(self, 'conf_sigmaX', conf)
+
+        if hasattr(statSigma, 'sigma_mat'):
+            s = getattr(statSigma, 'sigma_mat')
+            conf = scipy.special.erf(-np.abs(y-u)/s/np.sqrt(2))+1
+            setattr(self, 'conf_sigma', conf)
+
+        # if hasattr(statSigma, 'sigmaComb_mat'):
+        #     s = getattr(statSigma, 'sigmaComb_mat')
+        #     conf = scipy.special.erf(np.abs(y-u)/s/np.sqrt(2))
+        #     setattr(self, 'conf_sigmaComb', conf)
+
+        if hasattr(statSigma, 'sigmaMC_mat'):
+            n = dataMC.shape[2]
+            # yR = np.stack((y, 2*u-y), axis=2)
+            # yRsort = np.sort(yR, axis=2)
+            # bMat1 = dataMC <= np.tile(yRsort[:, :, 0:1], [1, 1, n])
+            # n1 = np.count_nonzero(bMat1, axis=2)
+            # bMat2 = dataMC >= np.tile(yRsort[:, :, 1:2], [1, 1, n])
+            # n2 = np.count_nonzero(bMat2, axis=2)
+            # conf = (n1+n2)/n
+            # conf[np.isnan(y)] = np.nan
+
+            # y = dataMC[:, :, 0]
+            dmat = np.tile(np.abs(y-u)[:, :, None], [1, 1, n])
+            dmatMC = np.abs(dataMC-np.tile(u[:, :, None], [1, 1, n]))
+            bMat = dmatMC >= dmat
+            n1 = np.count_nonzero(bMat, axis=2)
+            conf = n1/n
+            conf[np.isnan(y)] = np.nan
+
+            # m1 = np.concatenate((y[:, :, None], dataMC), axis=2)
+            # m2 = np.concatenate(((2*u-y)[:, :, None], dataMC), axis=2)
+            # # rm1 = np.argsort(m1)[:, :, 0]
+            # rm1 = np.where(np.argsort(m1) == 0)[2].reshape(y.shape[0],y.shape[1])
+            # # rm2 = np.argsort(m2)[:, :, 0]
+            # rm2 = np.where(np.argsort(m2) == 0)[2].reshape(y.shape[0], y.shape[1])
+            # conf = 1-np.abs(rm1-rm2)/n
+            # conf[np.isnan(y)] = np.nan
+            setattr(self, 'conf_sigmaMC', conf)
+
+
+class statProb(object):
     def __init__(self, *, statSigma, dataPred, dataTarget, dataMC):
         u = dataPred
         y = dataTarget
@@ -54,26 +111,29 @@ class statConf(object):
 
         if hasattr(statSigma, 'sigmaX_mat'):
             s = getattr(statSigma, 'sigmaX_mat')
-            conf = scipy.special.erf(np.abs(y-u)/s/np.sqrt(2))
-            setattr(self, 'conf_sigmaX', conf)
+            # prob = scipy.special.erf(np.abs(y-u)/s/np.sqrt(2))
+            prob = scipy.stats.norm.pdf((y-u)/s)
+            setattr(self, 'prob_sigmaX', prob)
 
         if hasattr(statSigma, 'sigma_mat'):
             s = getattr(statSigma, 'sigma_mat')
-            conf = scipy.special.erf(np.abs(y-z)/s/np.sqrt(2))
-            setattr(self, 'conf_sigma', conf)
-        
+            # prob = scipy.special.erf(np.abs(y-z)/s/np.sqrt(2))
+            prob = scipy.stats.norm.pdf((y-u)/s)
+            setattr(self, 'prob_sigma', prob)
+
         if hasattr(statSigma, 'sigmaComb_mat'):
             s = getattr(statSigma, 'sigmaComb_mat')
-            conf = scipy.special.erf(np.abs(y-u)/s/np.sqrt(2))
-            setattr(self, 'conf_sigmaComb', conf)
+            # prob = scipy.special.erf(np.abs(y-u)/s/np.sqrt(2))
+            prob = scipy.stats.norm.pdf((y-u)/s)
+            setattr(self, 'prob_sigmaComb', prob)
 
         if hasattr(statSigma, 'sigmaMC_mat'):
             n = dataMC.shape[2]
             m = np.concatenate((y[:, :, None], dataMC), axis=2)
             rm = np.argsort(m)[:, :, 0]
-            conf = 1-np.abs(2*rm-n)/n
-            conf[np.isnan(y)] = np.nan
-            setattr(self, 'conf_sigmaMC', conf)
+            prob = 1-np.abs(2*rm-n)/n
+            prob[np.isnan(y)] = np.nan
+            setattr(self, 'prob_sigmaMC', prob)
 
 
 class statNorm(object):

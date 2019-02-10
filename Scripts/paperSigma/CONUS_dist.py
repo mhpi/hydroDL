@@ -1,77 +1,87 @@
 import os
 import rnnSMAP
+import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 
 import imp
 imp.reload(rnnSMAP)
 rnnSMAP.reload()
 
-figTitleLst = ['Training', 'Temporal Test', 'Spatial Test']
-fig, axes = plt.subplots(ncols=len(figTitleLst), figsize=(12, 4))
+trainName = 'CONUSv2f1'
+out = trainName+'_y15_Forcing'
+rootDB = rnnSMAP.kPath['DB_L3_NA']
+rootOut = rnnSMAP.kPath['OutSigma_L3_NA']
+saveFolder = os.path.join(rnnSMAP.kPath['dirResult'], 'paperSigma')
 
-for iFig in range(0, 3):
-    # iFig = 0
-    figTitle = figTitleLst[iFig]
-    if iFig == 0:
-        testName = 'CONUSv2f1'
-        yr = [2015]
-    if iFig == 1:
-        testName = 'CONUSv2f1'
-        yr = [2016, 2017]
-    if iFig == 2:
-        testName = 'CONUSv2f2'
-        yr = [2015]
+doOpt = []
+# doOpt.append('loadData')
+doOpt.append('plotConf')
+# doOpt.append('plotProb')
 
-    trainName = 'CONUSv2f1'
-    out = trainName+'_y15_Forcing'
-    rootDB = rnnSMAP.kPath['DB_L3_NA']
-    rootOutLst = [rnnSMAP.kPath['Out_L3_NA'],
-                    rnnSMAP.kPath['OutSigma_L3_NA'],
-                    rnnSMAP.kPath['OutSigma_L3_NA']]
-    caseStrLst = ['sigmaMC', 'sigmaX', 'sigma']
-    nCase = len(caseStrLst)
-    saveFolder = os.path.join(
-        rnnSMAP.kPath['dirResult'], 'paperSigma')
+matplotlib.rcParams.update({'font.size': 14})
+matplotlib.rcParams.update({'lines.linewidth': 2})
+matplotlib.rcParams.update({'lines.markersize': 10})
 
-    #################################################
-    # test
-    predField = 'LSTM'
-    targetField = 'SMAP'
+#################################################
+# load data
+if 'loadData' in doOpt:
     dsLst = list()
     statErrLst = list()
     statSigmaLst = list()
-    statConfLst = list()
     statNormLst = list()
-    for k in range(0, len(caseStrLst)):
-        rootOut = rootOutLst[k]
+
+    for k in range(0, 3):
+        # k = 0
+        if k == 0:
+            testName = 'CONUSv2f1'
+            yr = [2015]
+        if k == 1:
+            testName = 'CONUSv2f1'
+            yr = [2016, 2017]
+        if k == 2:
+            testName = 'CONUSv2f2'
+            yr = [2015]
+
+        predField = 'LSTM'
+        targetField = 'SMAP'
         ds = rnnSMAP.classDB.DatasetPost(
             rootDB=rootDB, subsetName=testName, yrLst=yr)
         ds.readData(var='SMAP_AM', field='SMAP')
         ds.readPred(rootOut=rootOut, out=out, drMC=100, field='LSTM')
         statErr = ds.statCalError(predField='LSTM', targetField='SMAP')
         statSigma = ds.statCalSigma(field='LSTM')
-        statConf = ds.statCalConf(predField='LSTM', targetField='SMAP')
         statNorm = rnnSMAP.classPost.statNorm(
             statSigma=statSigma, dataPred=ds.LSTM, dataTarget=ds.SMAP)
-
         dsLst.append(ds)
         statErrLst.append(statErr)
         statSigmaLst.append(statSigma)
-        statConfLst.append(statConf)
         statNormLst.append(statNorm)
 
-    #################################################
-    # plot confidence figure
-    plotLst = list()
-    for k in range(0, len(caseStrLst)):
-        statNorm = statNormLst[k]
-        plotLst.append(getattr(statNorm, 'yNorm_'+caseStrLst[k]))
-    legendLst = [r'$\sigma_{mc}$', r'$\sigma_{x}$', r'$\sigma_{comb}$']
-    rnnSMAP.funPost.plotCDF(
-        plotLst, ax=axes[iFig], legendLst=legendLst, ref='norm', cLst='grb',
-        xlabel='Normalized Prediction')
-    axes[iFig].set_title(figTitle)
-    axes[iFig].set_xlim([-5, 5])
-
-fig.show()
-fig.savefig(saveFolder+'/CONUS_dist.png', dpi=1200)
+#################################################
+# plot confidence figure
+if 'plotConf' in doOpt:
+    figTitleLst = ['Training', 'Temporal Test', 'Spatial Test']
+    fig, axes = plt.subplots(
+        ncols=len(figTitleLst), figsize=(12, 4), sharey=True)
+    sigmaStrLst = ['sigmaX', 'sigma']
+    for iFig in range(0, 3):
+        statNorm = statNormLst[iFig]
+        figTitle = figTitleLst[iFig]
+        plotLst = list()
+        for k in range(0, len(sigmaStrLst)):
+            plotLst.append(getattr(statNorm, 'yNorm_'+sigmaStrLst[k]))
+        legendLst = [r'$norm_{x}$', r'$norm_{comb}$']
+        _, _, out = rnnSMAP.funPost.plotCDF(
+            plotLst, ax=axes[iFig], legendLst=legendLst, cLst='grbm', ref='norm',
+            xlabel='Predicting Probablity', ylabel=None, showDiff=False)
+        axes[iFig].set_title(figTitle)
+        axes[iFig].set_xlim([-3, 3])
+        print(out['rmseLst'])
+        if iFig == 0:
+            axes[iFig].set_ylabel('True Probablity')
+    plt.tight_layout()
+    fig.show()
+    saveFile = os.path.join(saveFolder, 'CONUS_dist')
+    fig.savefig(saveFile, dpi=300)
+    fig.savefig(saveFile+'.eps')

@@ -85,6 +85,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
     elif opt.loss == 'sigma':
         nOut = ny+1
 
+    # model
     modelOpt = opt.modelOpt.split('+')
     tied = 'tied' in modelOpt
     relu = 'relu' in modelOpt
@@ -99,6 +100,7 @@ def trainLSTM(optDict: classLSTM.optLSTM):
         model = classLSTM.localLSTM_cuDNN(
             nx=nx, ny=nOut, hiddenSize=opt.hiddenSize, dr=opt.dr)
 
+    # loss function
     if opt.loss == 'mse':
         crit = torch.nn.MSELoss()
     elif opt.loss == 'sigma':

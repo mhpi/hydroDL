@@ -114,6 +114,7 @@ class sigmaLoss(torch.nn.Module):
             c2 = float(self.prior[2])
             nt = p.shape[0]
             loss = torch.exp(-s).mul(torch.mul(p-t, p-t)+c2/nt)/2+(1/2+c1/nt)*s
+            loss[loc0] = 0
             lossMeanT = torch.mean(loss, dim=0)
 
         lossMeanB = torch.mean(lossMeanT)

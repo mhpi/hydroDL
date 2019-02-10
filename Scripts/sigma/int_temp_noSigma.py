@@ -16,12 +16,11 @@ rnnSMAP.reload()
 doOpt = []
 # doOpt.append('train')
 doOpt.append('test')
-doOpt.append('plotConf')
+doOpt.append('plotMap')
 
 rootOutLst = [rnnSMAP.kPath['Out_L3_NA'], rnnSMAP.kPath['OutSigma_L3_NA']]
-out = 'CONUSv4f1_y15_Forcing'
-testName = 'CONUSv4f1'
-yr = [2016,2017]
+testName = 'CONUSv2f1'
+yr = [2017]
 nCase = len(rootOutLst)
 
 #################################################
@@ -36,7 +35,7 @@ if 'test' in doOpt:
     statConfLst = list()
     for k in range(0, len(rootOutLst)):
         rootOut = rootOutLst[k]
-        out = 'CONUSv4f1_y15_Forcing'
+        out = 'CONUSv2f1_y15_Forcing_dr60'
         testName = testName
         ds = rnnSMAP.classDB.DatasetPost(
             rootDB=rootDB, subsetName=testName, yrLst=yr)
@@ -50,17 +49,3 @@ if 'test' in doOpt:
         statErrLst.append(statErr)
         statSigmaLst.append(statSigma)
         statConfLst.append(statConf)
-
-#################################################
-if 'plotConf' in doOpt:
-    fig, ax = plt.subplots(figsize=(8, 6))
-
-    confXLst = list()
-    confMCLst = list()
-    for k in range(0, nCase):
-        statConf = statConfLst[k]        
-        confMCLst.append(statConf.conf_sigmaMC)    
-    rnnSMAP.funPost.plotConf(
-        confMCLst, ax=ax, legendLst=['noSigma', 'withSigma'])
-    ax.set_title('sigmaMC')
-    fig.show()

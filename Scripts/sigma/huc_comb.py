@@ -10,15 +10,16 @@ rnnSMAP.reload()
 #################################################
 # intervals temporal test
 doOpt = []
-# doOpt.append('train')
+doOpt.append('train')
 # doOpt.append('test')
 # doOpt.append('plotBox')
-doOpt.append('plotVS')
+# doOpt.append('plotVS')
 # doOpt.append('plotVS2')
 
 
 hucLst = ['04051118', '03101317', '02101114',
           '01020304', '02030406', '14151617']
+# hucLst = ['12131518', '01021518', '04051213']
 rootDB = rnnSMAP.kPath['DB_L3_NA']
 rootOut = rnnSMAP.kPath['OutSigma_L3_NA']
 saveFolder = os.path.join(
@@ -29,16 +30,17 @@ if 'train' in doOpt:
     opt = rnnSMAP.classLSTM.optLSTM(
         rootDB=rootDB, rootOut=rootOut,
         syr=2015, eyr=2015,
-        var='varLst_soilM', varC='varConstLst_Noah',
-        dr=0.5, modelOpt='relu',
+        var='varLst_Forcing', varC='varConstLst_Noah',
+        dr=0.6, modelOpt='relu',
         model='cudnn', loss='sigma'
     )
     cudaIdLst = [0, 1, 2, 0, 1, 2]
     for k in range(0, len(hucLst)):
         trainName = hucLst[k]+'_v2f1'
         opt['train'] = trainName
-        opt['out'] = trainName+'_y15_soilM'
-        print(trainName)
+        opt['out'] = trainName+'_y15_Forcing_dr60'
+        runTrainLSTM.runCmdLine(opt=opt, cudaID=k % 3, screenName=opt['out'])
+
 
 #################################################
 if 'test' in doOpt:

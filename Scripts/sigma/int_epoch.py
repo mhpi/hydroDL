@@ -15,9 +15,9 @@ doOpt = []
 doOpt.append('test')
 # doOpt.append('plotMap')
 doOpt.append('plotBox')
-doOpt.append('plotVS')
+# doOpt.append('plotVS')
 
-trainName = 'CONUSv4f1'
+trainName = 'CONUSv2f1'
 testName = trainName
 epochLst = [100, 200, 300, 400, 500]
 strEpochLst = ['ep100', 'ep200', 'ep300', 'ep400', 'ep500']
@@ -69,34 +69,6 @@ if 'test' in doOpt:
         dsLst.append(ds)
         statErrLst.append(statErr)
         statSigmaLst.append(statSigma)
-
-#################################################
-if 'plotMap' in doOpt:
-    cRangeErr = [0, 0.1]
-
-    for k in range(0, len(trainNameLst)):
-        trainName = trainNameLst[k]
-        ds = dsLst[k]
-        statErr = statErrLst[k]
-        statSigma = statSigmaLst[k]
-        for s in strErrLst:
-            grid = ds.data2grid(data=getattr(statErr, s))
-            saveFile = os.path.join(saveFolder, 'map_'+trainName+'_'+s)
-            titleStr = 'temporal '+s+' '+trainName
-            fig = rnnSMAP.funPost.plotMap(
-                grid, crd=ds.crdGrid, cRange=cRangeErr, title=titleStr, showFig=False)
-            fig.savefig(saveFile)
-        for s in strSigmaLst:
-            grid = ds.data2grid(data=getattr(statSigma, s))
-            saveFile = os.path.join(saveFolder, 'map_'+trainName+'_'+s)
-            titleStr = 'temporal '+s+' '+trainName
-            if s == 'sigmaMC':
-                cRangeSigma = [0, 0.03]
-            else:
-                cRangeSigma = [0, 0.06]
-            fig = rnnSMAP.funPost.plotMap(
-                grid, crd=ds.crdGrid, cRange=cRangeSigma, title=titleStr, showFig=False)
-            fig.savefig(saveFile)
 
 
 #################################################

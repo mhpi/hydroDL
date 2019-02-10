@@ -32,7 +32,7 @@ if 'train' in doOpt:
     opt = rnnSMAP.classLSTM.optLSTM(
         rootDB=rootDB, rootOut=rootOut,
         syr=2015, eyr=2015, varC='varConstLst_Noah',
-        dr=0.5, modelOpt='relu', model='cudnn',
+        dr=0.6, modelOpt='relu', model='cudnn',
         loss='sigma'
     )
     trainName = 'CONUSv4f1'
@@ -42,7 +42,7 @@ if 'train' in doOpt:
     for k in range(0, len(noiseNameLst)):
         opt['target'] = 'SMAP_AM_sn'+noiseNameLst[k]
         opt['var'] = 'varLst_Forcing'
-        opt['out'] = opt['train']+'_y15_Forcing_sn'+noiseNameLst[k]
+        opt['out'] = opt['train']+'_y15_Forcing_dr06_sn'+noiseNameLst[k]
         runTrainLSTM.runCmdLine(
             opt=opt, cudaID=cudaIdLst[k], screenName=opt['out'])
 

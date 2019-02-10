@@ -12,7 +12,8 @@ from matplotlib.patches import Rectangle
 def plotBox(data, labelC=None, labelS=None, colorLst='rbkgcmy', title=None,
             figsize=(8, 6), sharey=True):
     nc = len(data)
-    fig, axes = plt.subplots(ncols=nc, sharey=sharey, figsize=figsize)
+    fig, axes = plt.subplots(ncols=nc, sharey=sharey,
+                             figsize=figsize)
 
     for k in range(0, nc):
         ax = axes[k] if nc > 1 else axes
@@ -26,13 +27,14 @@ def plotBox(data, labelC=None, labelS=None, colorLst='rbkgcmy', title=None,
         else:
             ax.set_xlabel(str(k))
         ax.set_xticks([])
+        # ax.ticklabel_format(axis='y', style='sci')
     if labelS is not None:
         if nc == 1:
             ax.legend(bp['boxes'], labelS, loc='upper right')
         else:
             axes[-1].legend(bp['boxes'], labelS, loc='upper right')
-    fig.suptitle(title)
-    plt.show(block=False)
+    if title is not None:
+        fig.suptitle(title)
     return fig
 
 
@@ -53,11 +55,11 @@ def plotVS(x, y, *, ax=None, title=None, xlabel=None, ylabel=None,
         fig = None
     if title is not None:
         if titleCorr is True:
-            title = title+' '+'R={:.2f}'.format(corr)
+            title = title+' '+r'$\rho$={:.2f}'.format(corr)
         ax.set_title(title)
     else:
         if titleCorr is True:
-            ax.set_title('Pearson Correlation '+'{:.2f}'.format(corr))
+            ax.set_title(r'$\rho$='+'{:.2f}'.format(corr))
     if xlabel is not None:
         ax.set_xlabel(xlabel)
     if ylabel is not None:
@@ -81,34 +83,53 @@ def plot121Line(ax, spec='k-'):
 
 
 def plotMap(grid, *, crd, ax=None, lat=None, lon=None, title=None,
-            cRange=None):
+            cRange=None, shape=None):
     if lat is None and lon is None:
         lat = crd[0]
         lon = crd[1]
-    vmin = cRange[0] if cRange is not None else None
-    vmax = cRange[1] if cRange is not None else None
+    if cRange is not None:
+        vmin = cRange[0]
+        vmax = cRange[1]
+    else:
+        temp = flatData(grid)
+        vmin = np.percentile(temp, 5)
+        vmax = np.percentile(temp, 95)
 
     if ax is None:
         fig, ax = plt.figure(figsize=(8, 4))
-    map = Basemap(llcrnrlat=lat[-1], urcrnrlat=lat[0],
-                  llcrnrlon=lon[0], urcrnrlon=lon[-1],
-                  projection='cyl', resolution='c', ax=ax)
-    map.drawcoastlines()
-    map.drawstates()
-    map.drawcountries()
-    x, y = map(lon, lat)
+    mm = Basemap(llcrnrlat=lat[-1], urcrnrlat=lat[0],
+                 llcrnrlon=lon[0], urcrnrlon=lon[-1],
+                 projection='cyl', resolution='c', ax=ax)
+    mm.drawcoastlines()
+    # map.drawstates()
+    # map.drawcountries()
+    x, y = mm(lon, lat)
     xx, yy = np.meshgrid(x, y)
-    cs = map.pcolormesh(xx, yy, grid, cmap=plt.cm.jet, vmin=vmin, vmax=vmax)
+    cs = mm.pcolormesh(xx, yy, grid, cmap=plt.cm.jet, vmin=vmin, vmax=vmax)
     # cs=map.scatter(xx, yy, c=grid,s=10,cmap=plt.cm.jet,edgecolors=None, linewidth=0)
-    cbar = map.colorbar(cs, location='bottom', pad="5%")
+    if shape is not None:
+        crd = np.array(shape.points)
+        par = shape.parts
+        if len(par) > 1:
+            for k in range(0, len(par)-1):
+                x = crd[par[k]:par[k+1], 0]
+                y = crd[par[k]:par[k+1], 1]
+                mm.plot(x, y, color='r', linewidth=3)
+        else:
+            x = crd[:, 0]
+            y = crd[:, 1]
+            mm.plot(x, y, color='r', linewidth=3)
+    cbar = mm.colorbar(cs, location='bottom', pad='5%')
     if title is not None:
         ax.set_title(title)
-    if ax is None:
-        return fig
+        if ax is None:
+            return fig, ax, mm
+        else:
+            return mm
 
 
 def plotCDF(xLst, *, ax=None, title=None, legendLst=None, figsize=(8, 6),
-            ref='121', cLst=None, xlabel=None, ylabel=None, calDiff='RMSE'):
+            ref='121', cLst=None, xlabel=None, ylabel=None, showDiff='RMSE'):
     if ax is None:
         fig = plt.figure(figsize=figsize)
         ax = fig.subplots()
@@ -121,32 +142,37 @@ def plotCDF(xLst, *, ax=None, title=None, legendLst=None, figsize=(8, 6),
 
     if title is not None:
         ax.set_title(title)
-    if xlabel is None:
-        ax.set_xlabel('Value')
-    else:
+    if xlabel is not None:
         ax.set_xlabel(xlabel)
-    if ylabel is None:
-        ax.set_ylabel('Frequency')
-    else:
+    if ylabel is not None:
         ax.set_ylabel(ylabel)
 
-    xOutLst = list()
+    xSortLst = list()
+    rmseLst = list()
+    ksdLst = list()
     for k in range(0, len(xLst)):
         x = xLst[k]
         xSort = flatData(x)
-        yvals = np.arange(len(xSort))/float(len(xSort)-1)
-        xOutLst.append(xSort)
+        yRank = np.arange(len(xSort))/float(len(xSort)-1)
+        xSortLst.append(xSort)
         if legendLst is None:
             legStr = None
         else:
             legStr = legendLst[k]
 
-        if calDiff is 'RMSE':
-            if ref is '121':
-                diff = np.sqrt(((xSort - yvals) ** 2).mean())
-                legStr = legStr+' RMSE='+'%.3f' % diff
-
-        ax.plot(xSort, yvals, color=cLst[k], label=legStr)
+        if ref is '121':
+            yRef = yRank
+        elif ref is 'norm':
+            yRef = scipy.stats.norm.cdf(xSort, 0, 1)
+        rmse = np.sqrt(((xSort - yRef) ** 2).mean())
+        ksd = np.max(np.abs(xSort-yRef))
+        rmseLst.append(rmse)
+        ksdLst.append(ksd)
+        if showDiff is 'RMSE':
+            legStr = legStr+' RMSE='+'%.3f' % rmse
+        elif showDiff is 'KS':
+            legStr = legStr+' KS='+'%.3f' % ksd
+        ax.plot(xSort, yRank, color=cLst[k], label=legStr)
 
     if ref is '121':
         ax.plot([0, 1], [0, 1], 'k', label='y=x')
@@ -154,8 +180,10 @@ def plotCDF(xLst, *, ax=None, title=None, legendLst=None, figsize=(8, 6),
         xNorm = np.linspace(-5, 5, 1000)
         normCdf = scipy.stats.norm.cdf(xNorm, 0, 1)
         ax.plot(xNorm, normCdf, 'k', label='Gaussian')
-    ax.legend(loc='upper left')
-    return fig, ax, xOutLst
+    if legendLst is not None:
+        ax.legend(loc='best')
+    out = {'xSortLst': xSortLst, 'rmseLst': rmseLst, 'ksdLst': ksdLst}
+    return fig, ax, out
 
 
 def flatData(x):

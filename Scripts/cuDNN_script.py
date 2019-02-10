@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import torch
 import argparse
+from rnnSMAP import runTrainLSTM
 
 import imp
 imp.reload(rnnSMAP)
@@ -14,12 +15,12 @@ opt = rnnSMAP.classLSTM.optLSTM(
     rootDB=rnnSMAP.kPath['DB_L3_NA'],
     rootOut=rnnSMAP.kPath['Out_L3_NA'],
     syr=2015, eyr=2015,
-    var='varLst_soilM', varC='varConstLst_Noah',
-    train='CONUSv4f1', dr=0.5, modelOpt='relu',
-    model='cudnn', loss='sigma', out='CONUSv4f1_y15_Forcing'
+    var='varLst_Forcing', varC='varConstLst_Noah',
+    train='CONUSv2f1', dr=0.6, modelOpt='relu',
+    model='cudnn', loss='mse', out='CONUSv4f1_y15_Forcing_dr60'
 )
 # rnnSMAP.funLSTM.trainLSTM(opt)
-# runTrainLSTM.runCmdLine(opt=opt, cudaID=1, screenName=opt['out'])
+runTrainLSTM.runCmdLine(opt=opt, cudaID=2, screenName=opt['out'])
 
 # test
 out = opt['out']
