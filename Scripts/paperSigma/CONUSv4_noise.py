@@ -44,7 +44,7 @@ if 'test' in doOpt:
     for k in range(0, len(noiseNameLst)):
         testName = 'CONUSv4f1'
         if k == 0:
-            out = 'CONUSv4f1_y15_Forcing'
+            out = 'CONUSv4f1_y15_Forcing_dr06'
             targetName = 'SMAP_AM'
         else:
             out = 'CONUSv4f1_y15_Forcing_dr06_sn'+noiseNameLst[k]
