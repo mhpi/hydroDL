@@ -83,7 +83,7 @@ if 'plotConf' in doOpt:
         axes[iFig].set_title(figTitle)
         print(out['rmseLst'])        
     axes[0].set_ylabel('Frequency')
-    axes[1].get_legend().remove()
+    # axes[1].get_legend().remove()
     fig.tight_layout()
     fig.show()
     saveFile = os.path.join(saveFolder, 'CONUS_conf')
