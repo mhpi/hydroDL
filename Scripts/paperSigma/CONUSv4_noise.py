@@ -44,7 +44,7 @@ if 'test' in doOpt:
     for k in range(0, len(noiseNameLst)):
         testName = 'CONUSv4f1'
         if k == 0:
-            out = 'CONUSv4f1_y15_Forcing_dr06'
+            out = 'CONUSv4f1_y15_Forcing_dr60'
             targetName = 'SMAP_AM'
         else:
             out = 'CONUSv4f1_y15_Forcing_dr06_sn'+noiseNameLst[k]
@@ -179,9 +179,9 @@ if 'plotConfLegend' in doOpt:
     _, _, out = rnnSMAP.funPost.plotCDF(
         plotLst, ax=axes[0], legendLst=noiseLabelLst,
         xlabel=r'$P_{ee}$', ylabel=None, showDiff=False)
- 
+
     hh, ll = axes[0].get_legend_handles_labels()
-    axes[1].legend(hh, ll, borderaxespad=0, loc='lower left',ncol=1)
+    axes[1].legend(hh, ll, borderaxespad=0, loc='lower left', ncol=1)
     axes[1].axis('off')
     saveFile = os.path.join(saveFolder, 'noise_dist_leg')
     fig.savefig(saveFile, dpi=100)
