@@ -14,7 +14,7 @@ doOpt = []
 # doOpt.append('train')
 doOpt.append('test')
 # doOpt.append('plotMap')
-# doOpt.append('plotErrBox')
+doOpt.append('plotErrBox')
 # doOpt.append('plotConf')
 # doOpt.append('plotConfDist')
 # doOpt.append('plotConfLegend')
@@ -77,24 +77,24 @@ if 'plotErrBox' in doOpt:
         temp.append(getattr(statErrLst[k], strErr))
         data.append(temp)
 
-    fig, axes, bp = rnnSMAP.funPost.plotBox(
+    fig = rnnSMAP.funPost.plotBox(
         data, labelC=noiseLabelLst, figsize=(12, 6), colorLst='rbgk',
         labelS=labelS, title='Error and uncertainty estimates in temporal test')
 
-    axes[-1].get_legend().remove()
+    # axes[-1].get_legend().remove()
     fig.show()
     saveFile = os.path.join(saveFolder, 'noise_box')
     fig.subplots_adjust(wspace=0.1)
     fig.savefig(saveFile, dpi=100)
     fig.savefig(saveFile+'.eps')
 
-    figLeg, axLeg = plt.subplots(figsize=(3, 3))
-    leg = axes[-1].get_legend()
-    axLeg.legend(bp['boxes'], labelS, loc='upper right')
-    axLeg.axis('off')
-    figLeg.show()
-    saveFile = os.path.join(saveFolder, 'noise_box_legend')
-    figLeg.savefig(saveFile+'.eps')
+    # figLeg, axLeg = plt.subplots(figsize=(3, 3))
+    # leg = axes[-1].get_legend()
+    # axLeg.legend(bp['boxes'], labelS, loc='upper right')
+    # axLeg.axis('off')
+    # figLeg.show()
+    # saveFile = os.path.join(saveFolder, 'noise_box_legend')
+    # figLeg.savefig(saveFile+'.eps')
 
 
 #################################################
