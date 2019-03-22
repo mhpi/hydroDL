@@ -1,0 +1,62 @@
+{
+    "data": {
+        "name": "hydroDL.data.dbCsv.DataframeCsv",
+        "path": "/mnt/sdc/rnnSMAP/Database_SMAPgrid/Daily_L3",
+        "subset": "Globalv8f1",
+        "varT": [
+            "APCP_FORA",
+            "DLWRF_FORA",
+            "DSWRF_FORA",
+            "TMP_2_FORA",
+            "SPFH_2_FORA",
+            "VGRD_10_FORA",
+            "UGRD_10_FORA"
+        ],
+        "varC": [
+            "Bulk",
+            "Capa",
+            "Clay",
+            "NDVI",
+            "Sand",
+            "Silt",
+            "flag_albedo",
+            "flag_extraOrd",
+            "flag_landcover",
+            "flag_roughness",
+            "flag_vegDense",
+            "flag_waterbody"
+        ],
+        "target": "SMAP_AM",
+        "dateRange": [
+            20150401,
+            20160331
+        ],
+        "doNorm": [
+            true,
+            true
+        ],
+        "rmNan": [
+            true,
+            false
+        ]
+    },
+    "model": {
+        "name": "hydroDL.model.rnn.CudnnLstmModel",
+        "nx": 19,
+        "ny": 2,
+        "hiddenSize": 64,
+        "doReLU": true
+    },
+    "loss": {
+        "name": "hydroDL.model.crit.SigmaLoss",
+        "prior": "gauss"
+    },
+    "train": {
+        "miniBatch": [
+            100,
+            30
+        ],
+        "nEpoch": 500,
+        "saveEpoch": 100
+    }
+}

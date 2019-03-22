@@ -1,0 +1,22 @@
+import hydroDL
+from collections import OrderedDict
+from hydroDL.data import dbCsv
+""" default class options """
+optDataCsv = OrderedDict(
+    name='hydroDL.data.dbCsv.DataframeCsv',
+    path=hydroDL.pathSMAP['DB_L3_Global'],
+    subset='Globalv8f1',
+    varT=dbCsv.varForcing,
+    varC=dbCsv.varConst,
+    target='SMAP_AM',
+    dateRange=[20150401, 20160331],
+    doNorm=[True, True],
+    rmNan=[True, False])
+optLstm = OrderedDict(
+    name='hydroDL.model.rnn.CudnnLstmModel',
+    nx=19,
+    ny=2,
+    hiddenSize=256,
+    doReLU=True)
+optLoss = OrderedDict(name='hydroDL.model.crit.SigmaLoss', prior='gauss')
+optTrainSMAP = OrderedDict(miniBatch=[100, 30], nEpoch=500, saveEpoch=100)

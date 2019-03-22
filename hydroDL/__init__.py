@@ -1,25 +1,28 @@
 import os
 import socket
 import collections
+from . import utils 
+from . import data
+from . import model
+from . import plot
 
-__all__ = ['classDB', 'funDB', 'classLSTM', 'funLSTM', 'kPath']
+# __all__ = ['classDB', 'funDB', 'classLSTM', 'funLSTM', 'kPath']
 
-print('load rnnSMAP')
-
-#################################################
-# initialize data / out path of rnnSMAP
+print('loading package hydroDL')
 
 
 def initPath():
+    """initial shortcut for some import paths
+    """
     hostName = socket.gethostname()
-    if hostName == 'ce-406chsh11':
+    if hostName == 'smallLinux':
         dirDB = os.path.join(
             os.path.sep, 'mnt', 'sdc', 'rnnSMAP', 'Database_SMAPgrid')
         dirOut = os.path.join(
             os.path.sep, 'mnt', 'sdb', 'rnnSMAP', 'Output_SMAPgrid')
         dirResult = os.path.join(
             os.path.sep, 'mnt', 'sdb', 'rnnSMAP', 'Result_SMAPgrid')
-    kPath = collections.OrderedDict(
+    pathSMAP = collections.OrderedDict(
         DB_L3_CONUS=os.path.join(dirDB, 'Daily_L3_CONUS'),
         DB_L3_Global=os.path.join(dirDB, 'Daily_L3'),
         DB_L3_NA=os.path.join(dirDB, 'Daily_L3_NA'),
@@ -32,7 +35,8 @@ def initPath():
         Out_L4_NA=os.path.join(dirOut, 'L4_NA'),
         OutSigma_L3_NA=os.path.join(dirOut, 'L3_NA_sigma'),
         dirResult=dirResult)
-    return kPath
+    return pathSMAP
 
 
-kPath = initPath()
+pathSMAP = initPath()
+optHDL = dict(verbose=True)
