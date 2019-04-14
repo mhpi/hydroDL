@@ -30,3 +30,26 @@ def updateOpt(opt, **kw):
             print('skiped ' + key + ': not in argument dict')
     return opt
 
+
+def readDataOpt(optData, readX=True, readY=True):
+    if eval(optData['name']) is hydroDL.data.dbCsv.DataframeCsv:
+        df = hydroDL.data.dbCsv.DataframeCsv(
+            rootDB=optData['path'],
+            subsetName=optData['subset'],
+            tRange=optData['dateRange'])
+        if readX is True:
+            x = df.getData(
+                varT=optData['varT'],
+                varC=optData['varC'],
+                doNorm=optData['doNorm'][0],
+                rmNan=optData['rmNan'][0])
+        else:
+            x = None
+        if readY is True:
+            y = df.getData(
+                varT=optData['target'],
+                doNorm=optData['doNorm'][1],
+                rmNan=optData['rmNan'][1])
+        else:
+            y = None
+    return (x, y)

@@ -23,3 +23,17 @@ def crd2grid(y, x):
     ny = len(uy)
     indY = ny - 1 - indY
     return (uy, ux, indY, indX)
+
+
+def array2grid(data, crd):
+    (uy, ux, indY, indX) = crd2grid(crd[:, 0], crd[:, 1])
+    ny = len(uy)
+    nx = len(ux)
+    if data.ndim == 2:
+        nt = data.shape[1]
+        grid = np.full([ny, nx, nt], np.nan)
+        grid[indY, indX, :] = data
+    elif data.ndim == 1:
+        grid = np.full([ny, nx], np.nan)
+        grid[indY, indX] = data
+    return grid, uy, ux

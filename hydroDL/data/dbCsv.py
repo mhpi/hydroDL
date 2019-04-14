@@ -23,24 +23,22 @@ varConst = [
 
 
 class DataframeCsv(Dataframe):
-    def __init__(self, rootDB, *, subsetName, tRange):
+    def __init__(self, rootDB, *, subset, tRange):
         self.rootDB = rootDB
-        self.subsetName = subsetName
+        self.subset = subset
         rootName, crd, indSub, indSkip = readDBinfo(
-            rootDB=rootDB, subsetName=subsetName)
+            rootDB=rootDB, subset=subset)
         self.crd = crd
         self.indSub = indSub
         self.indSkip = indSkip
         self.rootName = rootName
-
-        (gridY, gridX, indY, indX) = utils.grid.crd2grid(crd[:, 0], crd[:, 1])
-        self.crdGrid = (gridY, gridX)
-        self.crdGridInd = np.stack((indY, indX), axis=1)
-
+        # (gridY, gridX, indY, indX) = utils.grid.crd2grid(crd[:, 0], crd[:, 1])
+        # self.crdGrid = (gridY, gridX)
+        # self.crdGridInd = np.stack((indY, indX), axis=1)
         self.time = utils.time.t2dtLst(tRange[0], tRange[1])
 
     def getGeo(self):
-        pass
+        return self.crd
 
     def getT(self):
         return self.time
@@ -52,7 +50,7 @@ class DataframeCsv(Dataframe):
             varC = [varC]
 
         yrLst, tDb = t2yrLst(self.time)
-        indDb, ind = utils.time.intersect(self.time, tDb)
+        indDb, ind = utils.time.intersect(tDb, self.time)
         nt = len(tDb)
         ngrid = len(self.indSub)
         nvar = 0
@@ -71,8 +69,8 @@ class DataframeCsv(Dataframe):
                 yrLst=yrLst,
                 fieldName=var)
             if doNorm is True:
-                statTemp = readStat(rootDB=self.rootDB, fieldName=var)
-                dataTemp = (dataTemp - statTemp[2]) / statTemp[3]
+                dataTemp = transNorm(
+                    dataTemp, rootDB=self.rootDB, fieldName=var)
             data[:, :, k] = dataTemp
             k = k + 1
 
@@ -86,9 +84,8 @@ class DataframeCsv(Dataframe):
                 yrLst=yrLst,
                 fieldName=var)
             if doNorm is True:
-                statTemp = readStat(
-                    rootDB=self.rootDB, fieldName=var, isConst=True)
-                dataTemp = (dataTemp - statTemp[2]) / statTemp[3]
+                dataTemp = transNorm(
+                    dataTemp, rootDB=self.rootDB, fieldName=var, isConst=True)
             data[:, :, k] = np.repeat(
                 np.reshape(dataTemp, [ngrid, 1]), nt, axis=1)
             k = k + 1
@@ -113,8 +110,8 @@ def t2yrLst(tArray):
     return yrLst, tDb
 
 
-def readDBinfo(*, rootDB, subsetName):
-    subsetFile = os.path.join(rootDB, "Subset", subsetName + ".csv")
+def readDBinfo(*, rootDB, subset):
+    subsetFile = os.path.join(rootDB, "Subset", subset + ".csv")
     print(subsetFile)
     dfSubset = pd.read_csv(subsetFile, dtype=np.int64, header=0)
     rootName = dfSubset.columns.values[0]
@@ -190,3 +187,12 @@ def readStat(*, rootDB, fieldName, isConst=False):
                                 "const_" + fieldName + "_stat.csv")
     stat = pd.read_csv(statFile, dtype=np.float, header=None).values.flatten()
     return stat
+
+
+def transNorm(data, *, rootDB, fieldName, fromRaw=True, isConst=False):
+    stat = readStat(rootDB=rootDB, fieldName=fieldName, isConst=isConst)
+    if fromRaw is True:
+        dataOut = (data - stat[2]) / stat[3]
+    else:
+        dataOut = data * stat[3] + stat[2]
+    return (dataOut)

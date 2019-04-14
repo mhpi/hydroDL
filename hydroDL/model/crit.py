@@ -28,3 +28,17 @@ class SigmaLoss(torch.nn.Module):
                 (p - t)**2 + c2 / nt) / 2 + (1 / 2 + c1 / nt) * s
         lossMean = torch.mean(loss)
         return lossMean
+
+
+class RmseLoss(torch.nn.Module):
+    def __init__(self):
+        super(RmseLoss, self).__init__()
+
+    def forward(self, output, target):
+        p0 = output[:, :, 0]
+        t0 = target[:, :, 0]
+        mask = t0 == t0
+        p = p0[mask]
+        t = t0[mask]
+        loss = torch.sqrt(((p - t)**2).mean())
+        return loss
