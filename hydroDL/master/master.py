@@ -53,8 +53,8 @@ def train(mDict, overwrite=False):
     if eval(optData['name']) is hydroDL.data.dbCsv.DataframeCsv:
         df = hydroDL.data.dbCsv.DataframeCsv(
             rootDB=optData['path'],
-            subsetName=optData['subset'],
-            tRange=optData['dateRange'])
+            subset=optData['subset'],
+            tRange=optData['tRange'])
         x = df.getData(
             varT=optData['varT'],
             varC=optData['varC'],
@@ -71,6 +71,11 @@ def train(mDict, overwrite=False):
         if optModel['ny'] != 2:
             print('updated ny by sigma loss')
             optModel['ny'] = 2
+    elif eval(optLoss['name']) is hydroDL.model.crit.RmseLoss:
+        lossFun = hydroDL.model.crit.RmseLoss()
+        if optModel['ny'] != 1:
+            print('updated ny by rmse loss')
+            optModel['ny'] = 1
     # model
     if eval(optModel['name']) is hydroDL.model.rnn.CudnnLstmModel:
         if optModel['nx'] != nx:

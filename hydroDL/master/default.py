@@ -15,8 +15,8 @@ optDataCsv = OrderedDict(
 optLstm = OrderedDict(
     name='hydroDL.model.rnn.CudnnLstmModel',
     nx=len(optDataCsv['varT']) + len(optDataCsv['varC']),
-    ny=2,
+    ny=1,
     hiddenSize=256,
     doReLU=True)
-optLoss = OrderedDict(name='hydroDL.model.crit.SigmaLoss', prior='gauss')
+optLoss = OrderedDict(name='hydroDL.model.crit.RmseLoss', prior='gauss')
 optTrainSMAP = OrderedDict(miniBatch=[100, 30], nEpoch=500, saveEpoch=100)

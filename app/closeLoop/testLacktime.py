@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 import datetime as dt
 
 rootDB = hydroDL.pathSMAP['DB_L3_NA']
-nEpoch = 20
+nEpoch = 100
 outFolder = os.path.join(hydroDL.pathSMAP['outTest'], 'closeLoop')
 ty1 = [20150406, 20160406]
 ty2 = [20160406, 20170406]
 
 doLst = list()
-# doLst.append('train')
+doLst.append('train')
 doLst.append('test')
 doLst.append('post')
 
