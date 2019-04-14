@@ -1,7 +1,11 @@
 """
-
+Define 
 """
 
+class geoObj(object):
+    def __init__(self):
+        
+    
 
 class Dataset(object):
     def __init__(self):

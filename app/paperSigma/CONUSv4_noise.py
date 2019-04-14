@@ -14,7 +14,7 @@ doOpt = []
 # doOpt.append('train')
 doOpt.append('test')
 # doOpt.append('plotMap')
-# doOpt.append('plotErrBox')
+doOpt.append('plotErrBox')
 # doOpt.append('plotConf')
 # doOpt.append('plotConfDist')
 # doOpt.append('plotConfLegend')
@@ -44,7 +44,7 @@ if 'test' in doOpt:
     for k in range(0, len(noiseNameLst)):
         testName = 'CONUSv4f1'
         if k == 0:
-            out = 'CONUSv4f1_y15_Forcing_dr06'
+            out = 'CONUSv4f1_y15_Forcing_dr60'
             targetName = 'SMAP_AM'
         else:
             out = 'CONUSv4f1_y15_Forcing_dr06_sn'+noiseNameLst[k]
@@ -77,24 +77,24 @@ if 'plotErrBox' in doOpt:
         temp.append(getattr(statErrLst[k], strErr))
         data.append(temp)
 
-    fig, axes, bp = rnnSMAP.funPost.plotBox(
+    fig = rnnSMAP.funPost.plotBox(
         data, labelC=noiseLabelLst, figsize=(12, 6), colorLst='rbgk',
         labelS=labelS, title='Error and uncertainty estimates in temporal test')
 
-    axes[-1].get_legend().remove()
+    # axes[-1].get_legend().remove()
     fig.show()
     saveFile = os.path.join(saveFolder, 'noise_box')
     fig.subplots_adjust(wspace=0.1)
     fig.savefig(saveFile, dpi=100)
     fig.savefig(saveFile+'.eps')
 
-    figLeg, axLeg = plt.subplots(figsize=(3, 3))
-    leg = axes[-1].get_legend()
-    axLeg.legend(bp['boxes'], labelS, loc='upper right')
-    axLeg.axis('off')
-    figLeg.show()
-    saveFile = os.path.join(saveFolder, 'noise_box_legend')
-    figLeg.savefig(saveFile+'.eps')
+    # figLeg, axLeg = plt.subplots(figsize=(3, 3))
+    # leg = axes[-1].get_legend()
+    # axLeg.legend(bp['boxes'], labelS, loc='upper right')
+    # axLeg.axis('off')
+    # figLeg.show()
+    # saveFile = os.path.join(saveFolder, 'noise_box_legend')
+    # figLeg.savefig(saveFile+'.eps')
 
 
 #################################################
@@ -179,9 +179,9 @@ if 'plotConfLegend' in doOpt:
     _, _, out = rnnSMAP.funPost.plotCDF(
         plotLst, ax=axes[0], legendLst=noiseLabelLst,
         xlabel=r'$P_{ee}$', ylabel=None, showDiff=False)
- 
+
     hh, ll = axes[0].get_legend_handles_labels()
-    axes[1].legend(hh, ll, borderaxespad=0, loc='lower left',ncol=1)
+    axes[1].legend(hh, ll, borderaxespad=0, loc='lower left', ncol=1)
     axes[1].axis('off')
     saveFile = os.path.join(saveFolder, 'noise_dist_leg')
     fig.savefig(saveFile, dpi=100)
