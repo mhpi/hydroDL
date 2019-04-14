@@ -190,7 +190,8 @@ def plotTsMap(dataGrid,
               *,
               colorMap=None,
               mapNameLst=None,
-              tsNameLst=None):
+              tsNameLst=None,
+              figsize=[12, 6]):
     if type(dataGrid) is np.ndarray:
         dataGrid = [dataGrid]
     if type(dataTs) is np.ndarray:
@@ -198,7 +199,7 @@ def plotTsMap(dataGrid,
     nMap = len(dataGrid)
     nTs = len(dataTs)
 
-    fig = plt.figure(figsize=[12, 6])
+    fig = plt.figure(figsize=figsize)
     gs = gridspec.GridSpec(3, nMap)
 
     for k in range(nMap):

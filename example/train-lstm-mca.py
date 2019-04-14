@@ -9,7 +9,7 @@ optData = master.updateOpt(
     master.default.optDataCsv,
     path=os.path.join(cDir, 'data'),
     subset='CONUSv4f1',
-    tRange=[20150401, 20160331],
+    tRange=[20150401, 20160401],
 )
 optModel = master.default.optLstm
 optLoss = master.updateOpt(
@@ -23,4 +23,4 @@ master.train(masterDict, overwrite=True)
 
 # test
 pred = master.test(
-    out, tRange=[20160401, 20170331], subset='CONUSv4f1', epoch=500)
+    out, tRange=[20160401, 20170401], subset='CONUSv4f1', epoch=500)
