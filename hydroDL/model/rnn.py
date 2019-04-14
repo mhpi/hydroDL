@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.nn import Parameter
 import torch.nn.functional as F
 from .dropout import DropMask, createMask
-from . import cnn
+# from . import cnn
 
 
 class LSTMcell_untied(torch.nn.Module):
