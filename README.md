@@ -1,4 +1,12 @@
-# Database
+# Example
+Two examples with sample data are wrapped up including
+ - [train a LSTM network to learn SMAP soil moisture](example/train-lstm.py)
+ - [estimate uncertainty of a LSTM network ](example/train-lstm-mca.py)
+
+A demo for temporal test is [here](example/demo-temporal-test.ipynb)
+
+
+# Database description
 ## Database Structure
 ```
 ├── CONUS
@@ -14,7 +22,7 @@
 │   │   ├── [Constant-Variable-Name].csv
 │   │   └── ...
 │   └── crd.csv
-├── CONUSv4f1wSite
+├── CONUSv4f1
 │   └── ...
 ├── Statistics
 │   ├── [Variable-Name]_stat.csv
@@ -23,14 +31,14 @@
 │   └── ...
 ├── Subset
 │   ├── CONUS.csv
-│   └── CONUSv4f1wSite.csv
+│   └── CONUSv4f1.csv
 └── Variable
     ├── varConstLst.csv
     └── varLst.csv
 ```
-### 1. Dataset folders (*CONUS* , *CONUSv4f1wSite*)
+### 1. Dataset folders (*CONUS* , *CONUSv4f1*)
 Data folder contains all data including both training and testing, time-dependent variables and constant variables. 
-In example data structure, there are two dataset folders - *CONUS* and *CONUSv4f1wSite*. Those data are saved in:
+In example data structure, there are two dataset folders - *CONUS* and *CONUSv4f1*. Those data are saved in:
 
  - **year/[Variable-Name].csv**:
 
@@ -81,20 +89,3 @@ If the index is -1 means all grid, from example CONUS dataset.
 Stored csv files contains a list of variables. Used as input to training code. Time-dependent variables and constant variables should be stored seperately. For example:
 - varLst.csv -> a list of time-dependent variables used as training predictors.
 - varLst.csv -> a list of constant variables used as training predictors.
-
-## Code to load dataset
-initilize a dataset object of CONUS dataset, from 2015 to 2016, SMAP as target and variables inside variable list files as predictor.
-``` python
-rootDB = [path to database]
-dataset = classDB.Dataset(
-    rootDB=rootDB, subsetName='CONUS',
-    yrLst=np.arange(2015,2017),
-    var=('varLst', 'varConstLst'), targetName='SMAP_AM')
-```
-Read data and load predictor and target to x and y.
-``` python
-dataset.readInput(loadNorm=True)
-dataset.readTarget(loadNorm=True)
-x = dataset.normInput
-y = dataset.normTarget
-```
