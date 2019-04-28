@@ -1,8 +1,8 @@
 # Citations
 
-K. Fang, M. Pan, and CP. Shen, The value of SMAP for long-term soil moisture estimation with the help of deep learning, Transactions on Geoscience and Remote Sensing, doi: 10.1109/TGRS.2018.2872131 (2018)
+K. Fang, M. Pan, and CP. Shen, [The value of SMAP for long-term soil moisture estimation with the help of deep learning](https://ieeexplore.ieee.org/document/8497052), Transactions on Geoscience and Remote Sensing, doi: 10.1109/TGRS.2018.2872131 (2018)
 
-K. Fang, CP. Shen, D. Kifer and X. Yang, Prolongation of SMAP to Spatio-temporally Seamless Coverage of Continental US Using a Deep Learning Neural Network, Geophysical Research Letters, doi: 10.1002/2017GL075619, preprint accessible at: arXiv:1707.06611 (2017)
+K. Fang, CP. Shen, D. Kifer and X. Yang, [Prolongation of SMAP to Spatio-temporally Seamless Coverage of Continental US Using a Deep Learning Neural Network](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075619), Geophysical Research Letters, doi: 10.1002/2017GL075619, preprint accessible at: arXiv:1707.06611 (2017)
 
 
 
