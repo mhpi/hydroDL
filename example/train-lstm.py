@@ -1,20 +1,26 @@
-from hydroDL import pathSMAP, master
+from hydroDL import pathSMAP
+from hydroDL.master import default, wrapMaster, train
 import os
+import torch
 
 cDir = os.path.dirname(os.path.abspath(__file__))
-cDir = r'/home/kxf227/work/GitHUB/pyRnnSMAP/example/'
 
 # define training options
-optData = master.updateOpt(
-    master.default.optDataCsv,
-    path=os.path.join(cDir, 'data'),
+optData = default.update(
+    default.optDataSMAP,
+    rootDB=os.path.join(cDir, 'data'),
     subset='CONUSv4f1',
     tRange=[20150401, 20160401])
-optModel = master.default.optLstm
-optLoss = master.default.optLoss
-optTrain = master.default.optTrainSMAP
+if torch.cuda.is_available():
+    optModel = default.optLstm
+else:
+    optModel = default.update(
+        default.optLstm,
+        name='hydroDL.model.rnn.CpuLstmModel')
+optLoss = default.optLossRMSE
+optTrain = default.update(default.optTrainSMAP, nEpoch=100)
 out = os.path.join(cDir, 'output', 'CONUSv4f1')
-masterDict = master.wrapMaster(out, optData, optModel, optLoss, optTrain)
+masterDict = wrapMaster(out, optData, optModel, optLoss, optTrain)
 
 # train
-master.train(masterDict, overwrite=True)
+train(masterDict)

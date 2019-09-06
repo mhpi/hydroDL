@@ -1,8 +1,8 @@
 {
-    "out": "/home/kxf227/work/GitHUB/pyRnnSMAP/example/output/CONUSv4f1",
+    "out": "C:\\PhD\\Code\\grouprepo\\hydroDL-dev\\example\\output\\CONUSv4f1",
     "data": {
         "name": "hydroDL.data.dbCsv.DataframeCsv",
-        "path": "/home/kxf227/work/GitHUB/pyRnnSMAP/example/data",
+        "rootDB": "C:\\PhD\\Code\\grouprepo\\hydroDL-dev\\example\\data",
         "subset": "CONUSv4f1",
         "varT": [
             "APCP_FORA",
@@ -27,7 +27,9 @@
             "flag_vegDense",
             "flag_waterbody"
         ],
-        "target": "SMAP_AM",
+        "target": [
+            "SMAP_AM"
+        ],
         "tRange": [
             20150401,
             20160401
@@ -39,10 +41,11 @@
         "rmNan": [
             true,
             false
-        ]
+        ],
+        "daObs": 0
     },
     "model": {
-        "name": "hydroDL.model.rnn.CudnnLstmModel",
+        "name": "hydroDL.model.rnn.CpuLstmModel",
         "nx": 19,
         "ny": 1,
         "hiddenSize": 256,
@@ -57,7 +60,7 @@
             100,
             30
         ],
-        "nEpoch": 500,
-        "saveEpoch": 100
+        "nEpoch": 5,
+        "saveEpoch": 5
     }
 }

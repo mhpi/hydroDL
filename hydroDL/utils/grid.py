@@ -25,8 +25,8 @@ def crd2grid(y, x):
     return (uy, ux, indY, indX)
 
 
-def array2grid(data, crd):
-    (uy, ux, indY, indX) = crd2grid(crd[:, 0], crd[:, 1])
+def array2grid(data, *, lat, lon):
+    (uy, ux, indY, indX) = crd2grid(lat, lon)
     ny = len(uy)
     nx = len(ux)
     if data.ndim == 2:

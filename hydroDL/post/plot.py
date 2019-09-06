@@ -6,10 +6,12 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 import matplotlib.gridspec as gridspec
 from hydroDL import utils
+import string
 
 import os
+# manually add package
 os.environ[
-    'PROJ_LIB'] = r'/home/kxf227/anaconda3/pkgs/proj4-5.2.0-he6710b0_1/share/proj/'
+    'PROJ_LIB'] = r'C:\pythonenvir\pkgs\proj4-5.2.0-ha925a31_1\Library\share'
 from mpl_toolkits import basemap
 
 
@@ -19,17 +21,27 @@ def plotBoxFig(data,
                colorLst='rbkgcmy',
                title=None,
                figsize=(8, 6),
-               sharey=True):
+               sharey=True,
+               legOnly=False):
     nc = len(data)
     fig, axes = plt.subplots(ncols=nc, sharey=sharey, figsize=figsize)
 
     for k in range(0, nc):
         ax = axes[k] if nc > 1 else axes
-        bp = ax.boxplot(
-            data[k], patch_artist=True, notch=True, showfliers=False)
+        temp = data[k]
+        if type(temp) is list:
+            for kk in range(len(temp)):
+                tt = temp[kk]
+                if tt is not None and tt != []:
+                    tt = tt[~np.isnan(tt)]
+                    temp[kk] = tt
+                else:
+                    temp[kk] = []
+        else:
+            temp = temp[~np.isnan(temp)]
+        bp = ax.boxplot(temp, patch_artist=True, notch=True, showfliers=False)
         for kk in range(0, len(bp['boxes'])):
             plt.setp(bp['boxes'][kk], facecolor=colorLst[kk])
-
         if label1 is not None:
             ax.set_xlabel(label1[k])
         else:
@@ -37,16 +49,25 @@ def plotBoxFig(data,
         ax.set_xticks([])
         # ax.ticklabel_format(axis='y', style='sci')
     if label2 is not None:
-        if nc == 1:
-            ax.legend(bp['boxes'], label2, loc='upper right')
-        else:
-            axes[-1].legend(bp['boxes'], label2, loc='upper right')
+        ax.legend(bp['boxes'], label2, loc='best')
+        if legOnly is True:
+            ax.legend(bp['boxes'], label2, bbox_to_anchor=(1, 0.5))
     if title is not None:
         fig.suptitle(title)
     return fig
 
 
-def plotTS(t, y, *, ax=None, figsize=(12, 4), cLst='rbkgcmy', legLst=None):
+def plotTS(t,
+           y,
+           *,
+           ax=None,
+           tBar=None,
+           figsize=(12, 4),
+           cLst='rbkgcmy',
+           markerLst=None,
+           legLst=None,
+           title=None,
+           linewidth=2):
     newFig = False
     if ax is None:
         fig = plt.figure(figsize=figsize)
@@ -61,12 +82,29 @@ def plotTS(t, y, *, ax=None, figsize=(12, 4), cLst='rbkgcmy', legLst=None):
         legStr = None
         if legLst is not None:
             legStr = legLst[k]
-        if True in np.isnan(yy):
-            ax.plot(tt, yy, '*', color=cLst[k], label=legStr)
+        if markerLst is None:
+            if True in np.isnan(yy):
+                ax.plot(tt, yy, '*', color=cLst[k], label=legStr)
+            else:
+                ax.plot(
+                    tt, yy, color=cLst[k], label=legStr, linewidth=linewidth)
         else:
-            ax.plot(tt, yy, color=cLst[k], label=legStr)
+            if markerLst[k] is '-':
+                ax.plot(
+                    tt, yy, color=cLst[k], label=legStr, linewidth=linewidth)
+            else:
+                ax.plot(
+                    tt, yy, color=cLst[k], label=legStr, marker=markerLst[k])
+        # ax.set_xlim([np.min(tt), np.max(tt)])
+    if tBar is not None:
+        ylim = ax.get_ylim()
+        tBar = [tBar] if type(tBar) is not list else tBar
+        for tt in tBar:
+            ax.plot([tt, tt], ylim, '-k')
     if legLst is not None:
         ax.legend(loc='best')
+    if title is not None:
+        ax.set_title(title)
     if newFig is True:
         return fig, ax
     else:
@@ -126,42 +164,57 @@ def plot121Line(ax, spec='k-'):
     ax.plot([vmin, vmax], [vmin, vmax], spec)
 
 
-def plotMap(grid,
+def plotMap(data,
             *,
-            crd,
             ax=None,
             lat=None,
             lon=None,
             title=None,
             cRange=None,
-            shape=None):
-    if lat is None and lon is None:
-        lat = crd[0]
-        lon = crd[1]
+            shape=None,
+            pts=None,
+            figsize=(8, 4),
+            plotColorBar=True):
     if cRange is not None:
         vmin = cRange[0]
         vmax = cRange[1]
     else:
-        temp = flatData(grid)
+        temp = flatData(data)
         vmin = np.percentile(temp, 5)
         vmax = np.percentile(temp, 95)
-
     if ax is None:
-        fig, ax = plt.figure(figsize=(8, 4))
+        fig, ax = plt.figure(figsize=figsize)
+
+    if len(data.squeeze().shape) == 1:
+        isGrid = False
+    else:
+        isGrid = True
+
     mm = basemap.Basemap(
-        llcrnrlat=lat[-1],
-        urcrnrlat=lat[0],
-        llcrnrlon=lon[0],
-        urcrnrlon=lon[-1],
+        llcrnrlat=np.min(lat),
+        urcrnrlat=np.max(lat),
+        llcrnrlon=np.min(lon),
+        urcrnrlon=np.max(lon),
         projection='cyl',
         resolution='c',
         ax=ax)
     mm.drawcoastlines()
-    # map.drawstates()
+    mm.drawstates()
     # map.drawcountries()
     x, y = mm(lon, lat)
-    xx, yy = np.meshgrid(x, y)
-    cs = mm.pcolormesh(xx, yy, grid, cmap=plt.cm.jet, vmin=vmin, vmax=vmax)
+    if isGrid is True:
+        xx, yy = np.meshgrid(x, y)
+        cs = mm.pcolormesh(xx, yy, data, cmap=plt.cm.jet, vmin=vmin, vmax=vmax)
+        # cs = mm.imshow(
+        #     np.flipud(data),
+        #     cmap=plt.cm.jet,
+        #     vmin=vmin,
+        #     vmax=vmax,
+        #     extent=[x[0], x[-1], y[0], y[-1]])
+    else:
+        cs = mm.scatter(
+            x, y, c=data, s=30, cmap=plt.cm.jet, vmin=vmin, vmax=vmax)
+
     if shape is not None:
         crd = np.array(shape.points)
         par = shape.parts
@@ -174,7 +227,17 @@ def plotMap(grid,
             y = crd[:, 0]
             x = crd[:, 1]
             mm.plot(x, y, color='r', linewidth=3)
-    mm.colorbar(cs, location='bottom', pad='5%')
+    if pts is not None:
+        mm.plot(pts[1], pts[0], 'k*', markersize=4)
+        npt = len(pts[0])
+        for k in range(npt):
+            plt.text(
+                pts[1][k],
+                pts[0][k],
+                string.ascii_uppercase[k],
+                fontsize=18)
+    if plotColorBar is True:
+        mm.colorbar(cs, location='bottom', pad='5%')
     if title is not None:
         ax.set_title(title)
         if ax is None:
@@ -183,44 +246,113 @@ def plotMap(grid,
             return mm
 
 
-def plotTsMap(dataGrid,
+def plotTsMap(dataMap,
               dataTs,
-              crd,
-              t,
               *,
-              colorMap=None,
+              lat,
+              lon,
+              t,
+              dataTs2=None,
+              tBar=None,
+              mapColor=None,
+              tsColor='krbg',
+              tsColor2='cmy',
               mapNameLst=None,
               tsNameLst=None,
-              figsize=[12, 6]):
-    if type(dataGrid) is np.ndarray:
-        dataGrid = [dataGrid]
+              tsNameLst2=None,
+              figsize=[12, 6],
+              isGrid=False,
+              multiTS=False,
+              linewidth=1):
+    if type(dataMap) is np.ndarray:
+        dataMap = [dataMap]
     if type(dataTs) is np.ndarray:
         dataTs = [dataTs]
-    nMap = len(dataGrid)
-    nTs = len(dataTs)
+    if dataTs2 is not None:
+        if type(dataTs2) is np.ndarray:
+            dataTs2 = [dataTs2]
+    nMap = len(dataMap)
 
+    # setup axes
     fig = plt.figure(figsize=figsize)
-    gs = gridspec.GridSpec(3, nMap)
+    if multiTS is False:
+        nAx = 1
+        dataTs = [dataTs]
+        if dataTs2 is not None:
+            dataTs2 = [dataTs2]
+    else:
+        nAx = len(dataTs)
+    gs = gridspec.GridSpec(3 + nAx, nMap)
+    gs.update(wspace=0.025, hspace=0)
+    axTsLst = list()
+    for k in range(nAx):
+        axTs = fig.add_subplot(gs[k + 3, :])
+        axTsLst.append(axTs)
+    if dataTs2 is not None:
+        axTs2Lst = list()
+        for axTs in axTsLst:
+            axTs2 = axTs.twinx()
+            axTs2Lst.append(axTs2)
 
+    # plot maps
     for k in range(nMap):
         ax = fig.add_subplot(gs[0:2, k])
-        data = dataGrid[k]
-        grid, uy, ux = utils.grid.array2grid(data, crd)
-        cRange = None if colorMap is None else colorMap[k]
+        cRange = None if mapColor is None else mapColor[k]
         title = None if mapNameLst is None else mapNameLst[k]
-        plotMap(grid, crd=[uy, ux], ax=ax, cRange=cRange, title=title)
-    axTs = fig.add_subplot(gs[2, :])
+        data = dataMap[k]
+        if isGrid is False:
+            plotMap(data, lat=lat, lon=lon, ax=ax, cRange=cRange, title=title)
+        else:
+            grid, uy, ux = utils.grid.array2grid(data, lat=lat, lon=lon)
+            plotMap(grid, lat=uy, lon=ux, ax=ax, cRange=cRange, title=title)
 
+    # plot ts
     def onclick(event):
-        lon = event.xdata
-        lat = event.ydata
-        d = np.sqrt((lon - crd[:, 1])**2 + (lat - crd[:, 0])**2)
+        xClick = event.xdata
+        yClick = event.ydata
+        d = np.sqrt((xClick - lon)**2 + (yClick - lat)**2)
         ind = np.argmin(d)
-        tsLst = list()
-        for k in range(nTs):
-            tsLst.append(dataTs[k][ind, :])
-        axTs.clear()
-        plotTS(t, tsLst, ax=axTs, legLst=tsNameLst)
+        titleStr = 'pixel %d, lat %.3f, lon %.3f' % (ind, lat[ind], lon[ind])
+        for ix in range(nAx):
+            tsLst = list()
+            for temp in dataTs[ix]:
+                tsLst.append(temp[ind, :])
+            axTsLst[ix].clear()
+            if ix == 0:
+                plotTS(
+                    t,
+                    tsLst,
+                    ax=axTsLst[ix],
+                    legLst=tsNameLst,
+                    title=titleStr,
+                    cLst=tsColor,
+                    linewidth=linewidth,
+                    tBar=tBar)
+            else:
+                plotTS(
+                    t,
+                    tsLst,
+                    ax=axTsLst[ix],
+                    legLst=tsNameLst,
+                    cLst=tsColor,
+                    linewidth=linewidth,
+                    tBar=tBar)
+
+            if dataTs2 is not None:
+                tsLst2 = list()
+                for temp in dataTs2[ix]:
+                    tsLst2.append(temp[ind, :])
+                axTs2Lst[ix].clear()
+                plotTS(
+                    t,
+                    tsLst2,
+                    ax=axTs2Lst[ix],
+                    legLst=tsNameLst2,
+                    cLst=tsColor2,
+                    lineWidth=linewidth,
+                    tBar=tBar)
+            if ix != nAx - 1:
+                axTsLst[ix].set_xticklabels([])
         plt.draw()
 
     fig.canvas.mpl_connect('button_press_event', onclick)

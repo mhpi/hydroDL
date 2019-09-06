@@ -1,3 +1,3 @@
-from .master import readMasterFile, wrapMaster, train, test
-from .option import saveOpt, loadOpt, updateOpt
+from .master import readMasterFile, writeMasterFile, wrapMaster, train, test
 from . import default
+from .screen import runTrain
