@@ -4,7 +4,6 @@ import torch.nn as nn
 from torch.nn import Parameter
 import torch.nn.functional as F
 from .dropout import DropMask, createMask
-# from . import cnn
 
 
 class LSTMcell_untied(torch.nn.Module):
@@ -335,36 +334,33 @@ class CudnnLstmModel(torch.nn.Module):
         return out
 
 
-class LstmCloseModel(torch.nn.Module):
-    def __init__(self, *, nx, ny, hiddenSize, dr=0.5, fillObs=True):
-        super(LstmCloseModel, self).__init__()
+class CpuLstmModel(torch.nn.Module):
+    def __init__(self, *, nx, ny, hiddenSize, dr=0.5):
+        super(CpuLstmModel, self).__init__()
         self.nx = nx
         self.ny = ny
         self.hiddenSize = hiddenSize
         self.ct = 0
         self.nLayer = 1
         self.linearIn = torch.nn.Linear(nx, hiddenSize)
-        # self.lstm = CudnnLstm(
-        #     inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr)
         self.lstm = LSTMcell_tied(
-            inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr, drMethod='drW')
+            inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr, drMethod='drW', gpu=-1)
         self.linearOut = torch.nn.Linear(hiddenSize, ny)
-        self.gpu = 1
-        self.fillObs = fillObs
+        self.gpu = -1
 
-    def forward(self, x, y=None):
+    def forward(self, x, doDropMC=False):
+        # x0 = F.relu(self.linearIn(x))
+        # outLSTM, (hn, cn) = self.lstm(x0, doDropMC=doDropMC)
+        # out = self.linearOut(outLSTM)
+        # return out
         nt, ngrid, nx = x.shape
-        yt = torch.zeros(ngrid, 1).cuda()
-        out = torch.zeros(nt, ngrid, self.ny).cuda()
+        yt = torch.zeros(ngrid, 1)
+        out = torch.zeros(nt, ngrid, self.ny)
         ht = None
         ct = None
         resetMask = True
         for t in range(nt):
-            if self.fillObs is True:
-                ytObs = y[t, :, :]
-                mask = ytObs == ytObs
-                yt[mask] = ytObs[mask]
-            xt = torch.cat((x[t, :, :], yt), 1)
+            xt = x[t, :, :]
             x0 = F.relu(self.linearIn(xt))
             ht, ct = self.lstm(x0, hidden=(ht, ct), resetMask=resetMask)
             yt = self.linearOut(ht)
@@ -372,128 +368,3 @@ class LstmCloseModel(torch.nn.Module):
             out[t, :, :] = yt
         return out
 
-
-class LstmCnnCond(nn.Module):
-    def __init__(self,
-                 *,
-                 nx,
-                 ny,
-                 ct,
-                 opt=1,
-                 hiddenSize=64,
-                 cnnSize=32,
-                 cp1=(64, 3, 2),
-                 cp2=(128, 5, 2),
-                 dr=0.5):
-        super(LstmCnnCond, self).__init__()
-
-        # opt == 1: cnn output as initial state of LSTM (h0)
-        # opt == 2: cnn output as additional output of LSTM
-        # opt == 3: cnn output as constant input of LSTM
-
-        if opt == 1:
-            cnnSize = hiddenSize
-
-        self.nx = nx
-        self.ny = ny
-        self.ct = ct
-        self.ctRm = False
-        self.hiddenSize = hiddenSize
-        self.opt = opt
-
-        self.cnn = cnn.Cnn1d(nx=nx, nt=ct, cnnSize=cnnSize, cp1=cp1, cp2=cp2)
-
-        self.lstm = CudnnLstm(
-            inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr)
-        if opt == 3:
-            self.linearIn = torch.nn.Linear(nx + cnnSize, hiddenSize)
-        else:
-            self.linearIn = torch.nn.Linear(nx, hiddenSize)
-        if opt == 2:
-            self.linearOut = torch.nn.Linear(hiddenSize + cnnSize, ny)
-        else:
-            self.linearOut = torch.nn.Linear(hiddenSize, ny)
-
-    def forward(self, x, xc):
-        # x- [nt,ngrid,nx]
-        x1 = xc
-        x1 = self.cnn(x1)
-        x2 = x
-        if self.opt == 1:
-            x2 = F.relu(self.linearIn(x2))
-            x2, (hn, cn) = self.lstm(x2, hx=x1[None, :, :])
-            x2 = self.linearOut(x2)
-        elif self.opt == 2:
-            x1 = x1[None, :, :].repeat(x2.shape[0], 1, 1)
-            x2 = F.relu(self.linearIn(x2))
-            x2, (hn, cn) = self.lstm(x2)
-            x2 = self.linearOut(torch.cat([x2, x1], 2))
-        elif self.opt == 3:
-            x1 = x1[None, :, :].repeat(x2.shape[0], 1, 1)
-            x2 = torch.cat([x2, x1], 2)
-            x2 = F.relu(self.linearIn(x2))
-            x2, (hn, cn) = self.lstm(x2)
-            x2 = self.linearOut(x2)
-
-        return x2
-
-
-class LstmCnnForcast(nn.Module):
-    def __init__(self,
-                 *,
-                 nx,
-                 ny,
-                 ct,
-                 opt=1,
-                 hiddenSize=64,
-                 cnnSize=32,
-                 cp1=(64, 3, 2),
-                 cp2=(128, 5, 2),
-                 dr=0.5):
-        super(LstmCnnForcast, self).__init__()
-
-        if opt == 1:
-            cnnSize = hiddenSize
-
-        self.nx = nx
-        self.ny = ny
-        self.ct = ct
-        self.ctRm = True
-        self.hiddenSize = hiddenSize
-        self.opt = opt
-        self.cnnSize = cnnSize
-
-        if opt == 1:
-            self.cnn = cnn.Cnn1d(
-                nx=nx + 1, nt=ct, cnnSize=cnnSize, cp1=cp1, cp2=cp2)
-        if opt == 2:
-            self.cnn = cnn.Cnn1d(
-                nx=1, nt=ct, cnnSize=cnnSize, cp1=cp1, cp2=cp2)
-
-        self.lstm = CudnnLstm(
-            inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr)
-        self.linearIn = torch.nn.Linear(nx + cnnSize, hiddenSize)
-        self.linearOut = torch.nn.Linear(hiddenSize, ny)
-
-    def forward(self, x, y):
-        # x- [nt,ngrid,nx]
-        nt, ngrid, nx = x.shape
-        ct = self.ct
-        pt = nt - ct
-
-        if self.opt == 1:
-            x1 = torch.cat((y, x), dim=2)
-        elif self.opt == 2:
-            x1 = y
-
-        x1out = torch.zeros([pt, ngrid, self.cnnSize]).cuda()
-        for k in range(pt):
-            x1out[k, :, :] = self.cnn(x1[k:k + ct, :, :])
-
-        x2 = x[ct:nt, :, :]
-        x2 = torch.cat([x2, x1out], 2)
-        x2 = F.relu(self.linearIn(x2))
-        x2, (hn, cn) = self.lstm(x2)
-        x2 = self.linearOut(x2)
-
-        return x2

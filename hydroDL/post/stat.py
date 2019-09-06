@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.stats
 
+keyLst = ['Bias', 'RMSE', 'ubRMSE', 'Corr']
+
 
 def statError(pred, target):
     ngrid, nt = pred.shape

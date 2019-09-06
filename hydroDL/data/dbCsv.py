@@ -6,107 +6,46 @@ import numpy as np
 import pandas as pd
 import time
 import datetime as dt
-
-from .dataframe import Dataframe
 import hydroDL.utils as utils
+from . import Dataframe, DataModel
+import hydroDL
 
 varTarget = ['SMAP_AM']
 varForcing = [
     'APCP_FORA', 'DLWRF_FORA', 'DSWRF_FORA', 'TMP_2_FORA', 'SPFH_2_FORA',
     'VGRD_10_FORA', 'UGRD_10_FORA'
 ]
+varSoilM = [
+    'APCP_FORA', 'DLWRF_FORA', 'DSWRF_FORA', 'TMP_2_FORA', 'SPFH_2_FORA',
+    'VGRD_10_FORA', 'UGRD_10_FORA', 'SOILM_0-10_NOAH'
+]
 varConst = [
+    'Bulk', 'Capa', 'Clay', 'NDVI', 'Sand', 'Silt', 'flag_albedo',
+    'flag_extraOrd', 'flag_landcover', 'flag_roughness', 'flag_vegDense',
+    'flag_waterbody'
+]
+varForcingGlobal = ['GPM', 'Wind', 'Tair', 'Psurf', 'Qair', 'SWdown', 'LWdown']
+varSoilmGlobal = [
+    'SoilMoi0-10', 'GPM', 'Wind', 'Tair', 'Psurf', 'Qair', 'SWdown', 'LWdown'
+]
+varConstGlobal = [
     'Bulk', 'Capa', 'Clay', 'NDVI', 'Sand', 'Silt', 'flag_albedo',
     'flag_extraOrd', 'flag_landcover', 'flag_roughness', 'flag_vegDense',
     'flag_waterbody'
 ]
 
 
-class DataframeCsv(Dataframe):
-    def __init__(self, rootDB, *, subset, tRange):
-        self.rootDB = rootDB
-        self.subset = subset
-        rootName, crd, indSub, indSkip = readDBinfo(
-            rootDB=rootDB, subset=subset)
-        self.crd = crd
-        self.indSub = indSub
-        self.indSkip = indSkip
-        self.rootName = rootName
-        # (gridY, gridX, indY, indX) = utils.grid.crd2grid(crd[:, 0], crd[:, 1])
-        # self.crdGrid = (gridY, gridX)
-        # self.crdGridInd = np.stack((indY, indX), axis=1)
-        self.time = utils.time.t2dtLst(tRange[0], tRange[1])
-
-    def getGeo(self):
-        return self.crd
-
-    def getT(self):
-        return self.time
-
-    def getData(self, *, varT=[], varC=[], doNorm=True, rmNan=True):
-        if type(varT) is str:
-            varT = [varT]
-        if type(varC) is str:
-            varC = [varC]
-
-        yrLst, tDb = t2yrLst(self.time)
-        indDb, ind = utils.time.intersect(tDb, self.time)
-        nt = len(tDb)
-        ngrid = len(self.indSub)
-        nvar = 0
-        for var in [varT, varC]:
-            nvar = nvar + len(var)
-        data = np.ndarray([ngrid, nt, nvar])
-
-        # time series
-        k = 0
-        for var in varT:
-            dataTemp = readDataTS(
-                rootDB=self.rootDB,
-                rootName=self.rootName,
-                indSub=self.indSub,
-                indSkip=self.indSkip,
-                yrLst=yrLst,
-                fieldName=var)
-            if doNorm is True:
-                dataTemp = transNorm(
-                    dataTemp, rootDB=self.rootDB, fieldName=var)
-            data[:, :, k] = dataTemp
-            k = k + 1
-
-        # const
-        for var in varC:
-            dataTemp = readDataConst(
-                rootDB=self.rootDB,
-                rootName=self.rootName,
-                indSub=self.indSub,
-                indSkip=self.indSkip,
-                yrLst=yrLst,
-                fieldName=var)
-            if doNorm is True:
-                dataTemp = transNorm(
-                    dataTemp, rootDB=self.rootDB, fieldName=var, isConst=True)
-            data[:, :, k] = np.repeat(
-                np.reshape(dataTemp, [ngrid, 1]), nt, axis=1)
-            k = k + 1
-
-        if rmNan is True:
-            data[np.where(np.isnan(data))] = 0
-        dataOut = data[:, indDb, :]
-        return dataOut
-
-
 def t2yrLst(tArray):
-    t1 = tArray[0]
-    t2 = tArray[-1]
+    t1 = tArray[0].astype(object)
+    t2 = tArray[-1].astype(object)
     y1 = t1.year
     y2 = t2.year
-    if t1 < dt.datetime(y1, 4, 1):
+    if t1 < dt.date(y1, 4, 1):
         y1 = y1 - 1
-    if t2 < dt.datetime(y2, 4, 1):
+    if t2 < dt.date(y2, 4, 1):
         y2 = y2 - 1
     yrLst = list(range(y1, y2 + 1))
-    tDb = utils.time.t2dtLst(dt.datetime(y1, 4, 1), dt.datetime(y2 + 1, 4, 1))
+    tDb = utils.time.tRange2Array([dt.date(y1, 4, 1), dt.date(y2 + 1, 4, 1)])
     return yrLst, tDb
 
 
@@ -169,7 +108,7 @@ def readDataTS(*, rootDB, rootName, indSub, indSkip, yrLst, fieldName):
     return data
 
 
-def readDataConst(*, rootDB, rootName, indSub, indSkip, yrLst, fieldName):
+def readDataConst(*, rootDB, rootName, indSub, indSkip, fieldName):
     # read data
     dataFile = os.path.join(rootDB, rootName, "const", fieldName + ".csv")
     data = pd.read_csv(
@@ -196,3 +135,102 @@ def transNorm(data, *, rootDB, fieldName, fromRaw=True, isConst=False):
     else:
         dataOut = data * stat[3] + stat[2]
     return (dataOut)
+
+
+def transNormSigma(data, *, rootDB, fieldName, fromRaw=True):
+    stat = readStat(rootDB=rootDB, fieldName=fieldName, isConst=False)
+    if fromRaw is True:
+        dataOut = np.log((data / stat[3])**2)
+    else:
+        dataOut = np.sqrt(np.exp(data)) * stat[3]                  
+    return (dataOut)
+
+
+class DataframeCsv(Dataframe):
+    def __init__(self, rootDB, *, subset, tRange):
+        super(DataframeCsv, self).__init__()
+        self.rootDB = rootDB
+        self.subset = subset
+        rootName, crd, indSub, indSkip = readDBinfo(
+            rootDB=rootDB, subset=subset)
+        self.lat = crd[:, 0]
+        self.lon = crd[:, 1]
+        self.indSub = indSub
+        self.indSkip = indSkip
+        self.rootName = rootName
+        self.time = utils.time.tRange2Array(tRange)
+
+    def getDataTs(self, varLst, *, doNorm=True, rmNan=True):
+        if type(varLst) is str:
+            varLst = [varLst]
+        yrLst, tDb = t2yrLst(self.time)
+        indDb, ind = utils.time.intersect(tDb, self.time)
+        nt = len(tDb)
+        ngrid = len(self.indSub)
+        nvar = len(varLst)
+        data = np.ndarray([ngrid, nt, nvar])
+
+        # time series
+        for k in range(nvar):
+            dataTemp = readDataTS(
+                rootDB=self.rootDB,
+                rootName=self.rootName,
+                indSub=self.indSub,
+                indSkip=self.indSkip,
+                yrLst=yrLst,
+                fieldName=varLst[k])
+            if doNorm is True:
+                dataTemp = transNorm(
+                    dataTemp, rootDB=self.rootDB, fieldName=varLst[k])
+            data[:, :, k] = dataTemp
+        if rmNan is True:
+            data[np.where(np.isnan(data))] = 0
+        dataOut = data[:, indDb, :]
+        return dataOut
+
+    def getDataConst(self, varLst, *, doNorm=True, rmNan=True):
+        if type(varLst) is str:
+            varLst = [varLst]
+        ngrid = len(self.indSub)
+        nvar = len(varLst)
+        data = np.ndarray([ngrid, nvar])
+        for k in range(nvar):
+            dataTemp = readDataConst(
+                rootDB=self.rootDB,
+                rootName=self.rootName,
+                indSub=self.indSub,
+                indSkip=self.indSkip,
+                fieldName=varLst[k])
+            if doNorm is True:
+                dataTemp = transNorm(
+                    dataTemp,
+                    rootDB=self.rootDB,
+                    fieldName=varLst[k],
+                    isConst=True)
+            data[:, k] = dataTemp
+        if rmNan is True:
+            data[np.where(np.isnan(data))] = 0
+        return data
+
+
+class DataModelCsv(DataModel):
+    def __init__(self,
+                 *,
+                 rootDB=hydroDL.pathSMAP['DB_L3_Global'],
+                 subset='CONUSv4f1',
+                 varT=varForcing,
+                 varC=varConst,
+                 target='SMAP_AM',
+                 tRange=[20150401, 20160401],
+                 doNorm=[True, True],
+                 rmNan=[True, False],
+                 daObs=0):
+        super(DataModelCsv, self).__init__()
+        df = DataframeCsv(rootDB=rootDB, subset=subset, tRange=tRange)
+
+        self.x = df.getDataTs(varLst=varT, doNorm=doNorm[0], rmNan=rmNan[0])
+        self.y = df.getDataTs(varLst=target, doNorm=doNorm[1], rmNan=rmNan[1])
+        self.c = df.getDataConst(varLst=varC, doNorm=doNorm[0], rmNan=rmNan[0])
+
+    def getData(self):
+        return self.x, self.y, self.c
