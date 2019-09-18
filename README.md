@@ -8,6 +8,7 @@ K. Fang, CP. Shen, D. Kifer and X. Yang, [Prolongation of SMAP to Spatio-tempora
 
 Shen, CP., [A trans-disciplinary review of deep learning research and its relevance for water resources scientists], Water Resources Research. 54(11), 8558-8593, doi: 10.1029/2018WR022643 (2018) https://doi.org/10.1029/2018WR022643
 
+Major code contributor: Kuai Fang (PhD., Penn State)
 
 # Example
 Two examples with sample data are wrapped up including
