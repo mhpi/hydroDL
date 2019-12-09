@@ -10,8 +10,8 @@ import string
 
 import os
 # manually add package
-os.environ[
-    'PROJ_LIB'] = r'C:\pythonenvir\pkgs\proj4-5.2.0-ha925a31_1\Library\share'
+# os.environ[
+#    'PROJ_LIB'] = r'C:\pythonenvir\pkgs\proj4-5.2.0-ha925a31_1\Library\share'
 from mpl_toolkits import basemap
 
 
