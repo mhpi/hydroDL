@@ -11,7 +11,7 @@ Shen, CP., [A trans-disciplinary review of deep learning research and its releva
 Major code contributor: Kuai Fang (PhD., Penn State), and smaller contribution from Dapeng Feng (PhD Student, Penn State)
 
 A new release is expected in early July, 2020, together with video code walkthrough.
-Computational benchmark: training of CAMELS data with 641 basins, 10 years, 300 epochs, in an hour.
+Computational benchmark: training of CAMELS data (w/ or w/o data integration) with 671 basins, 10 years, 300 epochs, in ~1 hour with GPU.
 
 # Example
 Two examples with sample data are wrapped up including
