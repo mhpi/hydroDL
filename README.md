@@ -1,3 +1,5 @@
+This code contains deep learning code used to modeling hydrologic systems, from soil moisture to streamflow, from projection to forecast. 
+
 # Citations
 
 If you find our code to be useful, please cite the following papers:
