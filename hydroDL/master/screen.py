@@ -26,6 +26,18 @@ def runTrain(masterDict, *, screen='test', cudaID):
         cmd = 'CUDA_VISIBLE_DEVICES={} screen -dmS {} python {} -F {} -M {}'.format(
             cudaID, screen, codePath, 'train', mFile)
 
+    # if screen is None:
+    #     #add some debugs Dapeng
+    #     parser = argparse.ArgumentParser()
+    #     parser.add_argument('-F', dest='func', type=str, default='train')
+    #     parser.add_argument('-M', dest='mFile', type=str, default=mFile)
+    #     args = parser.parse_args()
+    #     if args.func == 'train':
+    #         mDict = master.readMasterFile(args.mFile)
+    #         master.train(mDict)
+    #         # out = mDict['out']
+    #         # email.sendEmail(subject='Training Done', text=out)
+
     print(cmd)
     os.system(cmd)
 
@@ -38,5 +50,5 @@ if __name__ == '__main__':
     if args.func == 'train':
         mDict = master.readMasterFile(args.mFile)
         master.train(mDict)
-        out = mDict['out']
-        email.sendEmail(subject='Training Done', text=out)
+        # out = mDict['out']
+        # email.sendEmail(subject='Training Done', text=out)

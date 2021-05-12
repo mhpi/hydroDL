@@ -1,7 +1,7 @@
 import smtplib, ssl
 
 
-def sendEmail(subject, text, receiver='geofkwai@gmail.com'):
+def sendEmail(subject, text, receiver='dpfeng201@gmail.com'):
     sender = 'fkwai.public@gmail.com'
     password = 'fkwai0323'
     context = ssl.create_default_context()

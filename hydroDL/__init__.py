@@ -29,12 +29,17 @@ def initPath():
         dirResult=dirResult)
 
     pathCamels = collections.OrderedDict(
-        DB=os.path.join(os.path.sep, 'mnt', 'sdb', 'Data', 'Camels'),
-        Out=os.path.join(os.path.sep, 'mnt', 'sdb', 'rnnStreamflow'))
-    return pathSMAP, pathCamels
+        DB=os.path.join(os.path.sep, 'scratch', 'Camels'),
+        Out=os.path.join(os.path.sep, 'data', 'rnnStreamflow'))
+
+    pathGAGES = collections.OrderedDict(
+        DB=os.path.join(os.path.sep, 'scratch', 'GAGES'),
+        Out=os.path.join(os.path.sep, 'data', 'rnnStreamflow', 'GAGES'))
+
+    return pathSMAP, pathCamels, pathGAGES
 
 
-pathSMAP, pathCamels = initPath()
+pathSMAP, pathCamels, pathGAGES = initPath()
 
 from . import utils
 from . import data

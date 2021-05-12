@@ -30,3 +30,4 @@ def tRange2Array(tRange, *, step=np.timedelta64(1, 'D')):
 def intersect(tLst1, tLst2):
     C, ind1, ind2 = np.intersect1d(tLst1, tLst2, return_indices=True)
     return ind1, ind2
+
