@@ -1,21 +1,26 @@
 import sys
 sys.path.append('../')
 from hydroDL import master, utils
-from hydroDL.master import default
+from hydroDL.master import default, loadModel
 from hydroDL.post import plot, stat
 import matplotlib.pyplot as plt
 from hydroDL.data import camels
 from hydroDL.model import rnn, crit, train
 
 import numpy as np
+import pandas as pd
 import os
 import torch
+import random
+import datetime as dt
+import json
 
 # Options for different interface
 interfaceOpt = 1
-# ==1 is the more interpretable version, explicitly load data, model and loss, and train the model.
-# ==0 is the "pro" version, efficiently train different models based on the defined dictionary variables.
-# the results are identical.
+# ==1 default, the recommended and more interpretable version with clear data and training flow. We improved the
+# original one to explicitly load and process data, set up model and loss, and train the model.
+# ==0, the original "pro" version to train jobs based on the defined configuration dictionary.
+# Results are very similar for two options.
 
 # Options for training and testing
 # 0: train base model without DI
@@ -33,7 +38,17 @@ RHO = 365
 HIDDENSIZE = 256
 saveEPOCH = 20 # save model for every "saveEPOCH" epochs
 Ttrain = [19851001, 19951001]  # Training period
-seedid = 111111     # fix the random seed to make reproducible, use 111111 as example
+
+# Fix random seed
+seedid = 111111
+random.seed(seedid)
+torch.manual_seed(seedid)
+np.random.seed(seedid)
+torch.cuda.manual_seed(seedid)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+# Change the seed to have different runnings.
+# We use the mean discharge of 6 runnings with different seeds to account for randomness and report results
 
 # Define root directory of database and output
 # Modify this based on your own location
@@ -44,10 +59,56 @@ camels.initcamels(rootDatabase)  # initialize three camels module-scope variable
 # Define all the configurations into dictionary variables
 # three purposes using these dictionaries. 1. saved as configuration logging file. 2. for future testing. 3. can also
 # be used to directly train the model when interfaceOpt == 0
+
 # define dataset
+# default module stores default configurations, using update to change the config
 optData = default.optDataCamels
-optData = default.update(optData, tRange=Ttrain)  # Update the training period
-# define model and update parameters
+optData = default.update(optData, varT=camels.forcingLst, varC=camels.attrLstSel, tRange=Ttrain)  # Update the training period
+
+if (interfaceOpt == 1) and (2 not in Action):
+    # load training data explicitly for the interpretable interface. Notice: if you want to apply our codes to your own
+    # dataset, here is the place you can replace data.
+    # read data from original CAMELS dataset
+    # df: CAMELS dataframe; x: forcings[nb,nt,nx]; y: streamflow obs[nb,nt,ny]; c:attributes[nb,nc]
+    # nb: number of basins, nt: number of time steps (in Ttrain), nx: number of time-dependent forcing variables
+    # ny: number of target variables, nc: number of constant attributes
+    df = camels.DataframeCamels(
+        subset=optData['subset'], tRange=optData['tRange'])
+    x = df.getDataTs(
+        varLst=optData['varT'],
+        doNorm=False,
+        rmNan=False)
+    y = df.getDataObs(
+        doNorm=False,
+        rmNan=False,
+        basinnorm=False)
+    # transform discharge from ft3/s to mm/day and then divided by mean precip to be dimensionless.
+    # output = discharge/(area*mean_precip)
+    # this can also be done by setting the above option "basinnorm = True" for df.getDataObs()
+    y_temp = camels.basinNorm(y, optData['subset'], toNorm=True)
+    c = df.getDataConst(
+        varLst=optData['varC'],
+        doNorm=False,
+        rmNan=False)
+
+    # process, do normalization and remove nan
+    series_data = np.concatenate([x, y_temp], axis=2)
+    seriesvarLst = camels.forcingLst + ['runoff']
+    # calculate statistics for norm and saved to a dictionary
+    statDict = camels.getStatDic(attrLst=camels.attrLstSel, attrdata=c, seriesLst=seriesvarLst, seriesdata=series_data)
+    # normalize
+    attr_norm = camels.transNormbyDic(c, camels.attrLstSel, statDict, toNorm=True)
+    attr_norm[np.isnan(attr_norm)] = 0.0
+    series_norm = camels.transNormbyDic(series_data, seriesvarLst, statDict, toNorm=True)
+
+    # prepare the inputs
+    xTrain = series_norm[:, :, :-1]  # forcing, not include obs
+    xTrain[np.isnan(xTrain)] = 0.0
+    yTrain = np.expand_dims(series_norm[:, :, -1], 2)
+    attrs = attr_norm
+
+
+# define model and update configure
 if torch.cuda.is_available():
     optModel = default.optLstm
 else:
@@ -59,28 +120,24 @@ optModel = default.update(default.optLstm, hiddenSize=HIDDENSIZE)
 optLoss = default.optLossRMSE
 # define training options
 optTrain = default.update(default.optTrainCamels, miniBatch=[BATCH_SIZE, RHO], nEpoch=EPOCH, saveEpoch=saveEPOCH, seed=seedid)
+
 # define output folder for model results
 exp_name = 'CAMELSDemo'
-exp_disp = 'ReleaseRun'
+exp_disp = 'TestRun'
 save_path = os.path.join(exp_name, exp_disp, \
             'epochs{}_batch{}_rho{}_hiddensize{}_Tstart{}_Tend{}'.format(optTrain['nEpoch'], optTrain['miniBatch'][0],
                                                                           optTrain['miniBatch'][1],
                                                                           optModel['hiddenSize'],
                                                                           optData['tRange'][0], optData['tRange'][1]))
-out = os.path.join(rootOut, save_path, 'All-85-95') # output folder to save results
-# Wrap up all the training configurations to one dictionary in order to save into "out" folder
-masterDict = master.wrapMaster(out, optData, optModel, optLoss, optTrain)
 
 # Train the base model without data integration
 if 0 in Action:
+    out = os.path.join(rootOut, save_path, 'All-85-95')  # output folder to save results
+    # Wrap up all the training configurations to one dictionary in order to save into "out" folder
+    masterDict = master.wrapMaster(out, optData, optModel, optLoss, optTrain)
     if interfaceOpt == 1:  # use the more interpretable version interface
-        # load data
-        df, x, y, c = master.loadData(optData)  # df: CAMELS dataframe; x: forcings; y: streamflow obs; c:attributes
-        # main outputs of this step are numpy ndArrays: x[nb,nt,nx], y[nb,nt, ny], c[nb,nc]
-        # nb: number of basins, nt: number of time steps (in Ttrain), nx: number of time-dependent forcing variables
-        # ny: number of target variables, nc: number of constant attributes
-        nx = x.shape[-1] + c.shape[-1]  # update nx, nx = nx + nc
-        ny = y.shape[-1]
+        nx = xTrain.shape[-1] + attrs.shape[-1]  # update nx, nx = nx + nc
+        ny = yTrain.shape[-1]
         # load model for training
         if torch.cuda.is_available():
             model = rnn.CudnnLstmModel(nx=nx, ny=ny, hiddenSize=HIDDENSIZE)
@@ -93,12 +150,16 @@ if 0 in Action:
         # update and write the dictionary variable to out folder for logging and future testing
         masterDict = master.wrapMaster(out, optData, optModel, optLoss, optTrain)
         master.writeMasterFile(masterDict)
+        # log statistics
+        statFile = os.path.join(out, 'statDict.json')
+        with open(statFile, 'w') as fp:
+            json.dump(statDict, fp, indent=4)
         # train model
         model = train.trainModel(
             model,
-            x,
-            y,
-            c,
+            xTrain,
+            yTrain,
+            attrs,
             lossFun,
             nEpoch=EPOCH,
             miniBatch=[BATCH_SIZE, RHO],
@@ -119,12 +180,22 @@ if 1 in Action:
         out = os.path.join(rootOut, save_path, 'All-85-95-DI' + str(nDay))
         masterDict = master.wrapMaster(out, optData, optModel, optLoss, optTrain)
         if interfaceOpt==1:
-            # load data
-            df, x, y, c = master.loadData(optData)
-            # optData['daObs'] != 0, return a tuple to x, x[0]:forcings x[1]: integrated observations
-            x = np.concatenate([x[0], x[1]], axis=2)
-            nx = x.shape[-1] + c.shape[-1]
-            ny = y.shape[-1]
+            # optData['daObs'] != 0, load previous observation data to integrate
+            sd = utils.time.t2dt(
+                optData['tRange'][0]) - dt.timedelta(days=nDay)
+            ed = utils.time.t2dt(
+                optData['tRange'][1]) - dt.timedelta(days=nDay)
+            dfdi = camels.DataframeCamels(
+                subset=optData['subset'], tRange=[sd, ed])
+            datatemp = dfdi.getDataObs(
+                doNorm=False, rmNan=False, basinnorm=True) # 'basinnorm=True': output = discharge/(area*mean_precip)
+            # normalize data
+            dadata = camels.transNormbyDic(datatemp, 'runoff', statDict, toNorm=True)
+            dadata[np.where(np.isnan(dadata))] = 0.0
+
+            xIn = np.concatenate([xTrain, dadata], axis=2)
+            nx = xIn.shape[-1] + attrs.shape[-1]  # update nx, nx = nx + nc
+            ny = yTrain.shape[-1]
             # load model for training
             if torch.cuda.is_available():
                 model = rnn.CudnnLstmModel(nx=nx, ny=ny, hiddenSize=HIDDENSIZE)
@@ -135,12 +206,16 @@ if 1 in Action:
             # update and write dictionary variable to out folder for logging and future testing
             masterDict = master.wrapMaster(out, optData, optModel, optLoss, optTrain)
             master.writeMasterFile(masterDict)
+            # log statistics
+            statFile = os.path.join(out, 'statDict.json')
+            with open(statFile, 'w') as fp:
+                json.dump(statDict, fp, indent=4)
             # train model
             model = train.trainModel(
                 model,
-                x,
-                y,
-                c,
+                xIn,
+                yTrain,
+                attrs,
                 lossFun,
                 nEpoch=EPOCH,
                 miniBatch=[BATCH_SIZE, RHO],
@@ -160,9 +235,80 @@ if 2 in Action:
     outLst = [os.path.join(rootOut, save_path, x) for x in caseLst]
     subset = 'All'  # 'All': use all the CAMELS gages to test; Or pass the gage list
     tRange = [19951001, 20051001]  # Testing period
+    testBatch = 100 # do batch forward to save GPU memory
     predLst = list()
     for out in outLst:
-        df, pred, obs = master.test(out, tRange=tRange, subset=subset, basinnorm=True, epoch=TestEPOCH, reTest=True)
+        if interfaceOpt == 1:  # use the more interpretable version interface
+            # load testing data
+            mDict = master.readMasterFile(out)
+            optData = mDict['data']
+            df = camels.DataframeCamels(
+                subset=subset, tRange=tRange)
+            x = df.getDataTs(
+                varLst=optData['varT'],
+                doNorm=False,
+                rmNan=False)
+            obs = df.getDataObs(
+                doNorm=False,
+                rmNan=False,
+                basinnorm=False)
+            c = df.getDataConst(
+                varLst=optData['varC'],
+                doNorm=False,
+                rmNan=False)
+
+            # do normalization and remove nan
+            # load the saved statDict to make sure using the same statistics as training data
+            statFile = os.path.join(out, 'statDict.json')
+            with open(statFile, 'r') as fp:
+                statDict = json.load(fp)
+            seriesvarLst = optData['varT']
+            attrLst = optData['varC']
+            attr_norm = camels.transNormbyDic(c, attrLst, statDict, toNorm=True)
+            attr_norm[np.isnan(attr_norm)] = 0.0
+            xTest = camels.transNormbyDic(x, seriesvarLst, statDict, toNorm=True)
+            xTest[np.isnan(xTest)] = 0.0
+            attrs = attr_norm
+
+            if optData['daObs'] > 0:
+                # optData['daObs'] != 0, load previous observation data to integrate
+                nDay = optData['daObs']
+                sd = utils.time.t2dt(
+                    tRange[0]) - dt.timedelta(days=nDay)
+                ed = utils.time.t2dt(
+                    tRange[1]) - dt.timedelta(days=nDay)
+                dfdi = camels.DataframeCamels(
+                    subset=subset, tRange=[sd, ed])
+                datatemp = dfdi.getDataObs(
+                    doNorm=False, rmNan=False, basinnorm=True) # 'basinnorm=True': output = discharge/(area*mean_precip)
+                # normalize data
+                dadata = camels.transNormbyDic(datatemp, 'runoff', statDict, toNorm=True)
+                dadata[np.where(np.isnan(dadata))] = 0.0
+                xIn = np.concatenate([xTest, dadata], axis=2)
+
+            else:
+                xIn = xTest
+
+            # load and forward the model for testing
+            testmodel = loadModel(out, epoch=TestEPOCH)
+            filePathLst = master.master.namePred(
+                out, tRange, 'All', epoch=TestEPOCH)  # prepare the name of csv files to save testing results
+            train.testModel(
+                testmodel, xIn, c=attrs, batchSize=testBatch, filePathLst=filePathLst)
+            # read out predictions
+            dataPred = np.ndarray([obs.shape[0], obs.shape[1], len(filePathLst)])
+            for k in range(len(filePathLst)):
+                filePath = filePathLst[k]
+                dataPred[:, :, k] = pd.read_csv(
+                    filePath, dtype=np.float, header=None).values
+            # transform back to the original observation
+            temppred = camels.transNormbyDic(dataPred, 'runoff', statDict, toNorm=False)
+            pred = camels.basinNorm(temppred, subset, toNorm=False)
+
+        elif interfaceOpt == 0: # only for models trained by the pro interface
+            df, pred, obs = master.test(out, tRange=tRange, subset=subset, batchSize=testBatch, basinnorm=True,
+                                        epoch=TestEPOCH, reTest=True)
+
         # change the units ft3/s to m3/s
         obs = obs * 0.0283168
         pred = pred * 0.0283168

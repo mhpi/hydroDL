@@ -8,14 +8,14 @@ If you find our code to be useful, please cite the following papers:
 
 Feng, DP., Lawson, K., and CP. Shen, Mitigating prediction error of deep learning streamflow models in large data-sparse regions with ensemble modeling and soft data, Geophysical Research Letters (2021, Accepted) arXiv preprint https://arxiv.org/abs/2011.13380
 
-Feng, DP, K. Fang and CP. Shen, Enhancing streamflow forecast and extracting insights using continental-scale long-short term memory networks with data integration], Water Resources Research (2020), https://doi.org/10.1029/2019WR026793
+Feng, DP, K. Fang and CP. Shen, Enhancing streamflow forecast and extracting insights using continental-scale long-short term memory networks with data integration, Water Resources Research (2020), https://doi.org/10.1029/2019WR026793
 
 Shen, CP., A trans-disciplinary review of deep learning research and its relevance for water resources scientists, Water Resources Research. 54(11), 8558-8593, doi: 10.1029/2018WR022643 (2018) https://doi.org/10.1029/2018WR022643
 
 Major code contributor: Dapeng Feng (PhD Student, Penn State) and Kuai Fang (PhD., Penn State)
 
 # Examples
-The environment to repeat our results is shown as the file `repoenv.yml`. To create the same conda environment we are using, please run:
+The environment we are using is shown as the file `repoenv.yml`. To create the same conda environment, please run:
   ```Shell
 conda env create -f repoenv.yml
 ```
@@ -32,13 +32,13 @@ Several examples related to the above papers are presented here. Click the title
 The example dataset is embedded in this repo and can be found [here](example/data)
 Can also use [this script](example/train-lstm.py) to train model if you don't want to work with Jupyter Notebook
 
-## [Train a LSTM data integration model to make streamflow forecast](example/StreamflowExample-Integ.py)
-The dataset used is NCAR CAMELS dataset. Download CAMELS following [this link](https://ral.ucar.edu/solutions/products/camels). Video explanations of this example and how to read the dataset is [here](https://psu.zoom.us/rec/play/uJUtduv9pzk3SdyQ4wSDC_J_W9ToLv6sgCFP-aZcnRq2USEFMVSuYOBHMLRXdUH9qR2nWoRsIOxzLc0G?startTime=1579703281000). We describe an batch-enabled interface using master files.
+## [Train a LSTM data integration model to make streamflow forecast](example/StreamflowExample-DI.py)
+The dataset used is NCAR CAMELS dataset. Download CAMELS following [this link](https://ral.ucar.edu/solutions/products/camels).
 
 Computational benchmark: training of CAMELS data (w/ or w/o data integration) with 671 basins, 10 years, 300 epochs, in ~1 hour with GPU.
 
-## [Train LSTM and CNN-LSTM models for prediction in ungauged regions](example/PUR/trainPUR-HUC-All.py)
-The dataset used is also NCAR CAMELS as above. Use [this code](example/PUR/testPUR-HUC-All.py) to test your saved models after training finished.
+## [Train LSTM and CNN-LSTM models for prediction in ungauged regions](example/PUR/trainPUR-Reg.py)
+The dataset used is also NCAR CAMELS as above. Use [this code](example/PUR/testPUR-Reg.py) to test your saved models after training finished.
 
 ## [Estimate uncertainty of a LSTM network ](example/train-lstm-mca.py)
 
