@@ -36,15 +36,26 @@ as the variable `rootDatabase` inside the code later.
 
 Computational benchmark: training of CAMELS data (w/ or w/o data integration) with 671 basins, 10 years, 300 epochs, in ~1 hour with GPU.
 
+Related papers:  
+Feng et al. (2020). [Enhancing streamflow forecast and extracting insights using long‐short term memory networks with data integration at continental scales](https://doi.org/10.1029/2019WR026793). Water Resources Research.
+
 ## [2.Train LSTM and CNN-LSTM models for prediction in ungauged regions](example/PUR/trainPUR-Reg.py)
 The dataset used is also NCAR CAMELS. Follow the instructions in the first example above to download and unzip the dataset. Use [this code](example/PUR/testPUR-Reg.py) to test your saved models after training finished.
 
+Related papers:  
+Feng et al. (2021, Accepted). Mitigating prediction error of deep learning streamflow models in large data-sparse regions with ensemble modeling and soft data. Geophysical Research Letters.  
+Feng et al. (2020). [Enhancing streamflow forecast and extracting insights using long‐short term memory networks with data integration at continental scales](https://doi.org/10.1029/2019WR026793). Water Resources Research.
+
 ## [3.Train a LSTM model to learn SMAP soil moisture](example/demo-LSTM-Tutorial.ipynb)
-The example dataset is embedded in this repo and can be found [here](example/data)
-Can also use [this script](example/train-lstm.py) to train model if you don't want to work with Jupyter Notebook
+The example dataset is embedded in this repo and can be found [here](example/data).
+You can also use [this script](example/train-lstm.py) to train model if you don't want to work with Jupyter Notebook.
+
+Related papers:  
+Fang et al. (2017), [Prolongation of SMAP to Spatio-temporally Seamless Coverage of Continental US Using a Deep Learning Neural Network](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075619), Geophysical Research Letters.
 
 ## [4.Estimate uncertainty of a LSTM network ](example/train-lstm-mca.py)
-
+Related papers:  
+Fang et al. (2020). [Evaluating the potential and challenges of an uncertainty quantification method for long short-term memory models for soil moisture predictions](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020WR028095), Water Resources Research.
 # License
 Non-Commercial Software License Agreement
 
