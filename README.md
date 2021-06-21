@@ -24,23 +24,26 @@ Activate the installed environment before running the code:
 conda activate mhpihydrodl
 ```
 You can also use this `Environment Setup_Tutorial.pdf` document as a reference to set up your environment and solve some frequently encountered questions. 
-Note that there may be a compatibility issue with our code when using pyTorch version higher than 1.2. If you have to use high pyTorch version and indeed encounter an AttributeError not able to solve, please contact us to get instructions for this issue. Only a small modification is needed.
+There may be a small compatibility issue with our code when using very high pyTorch version. Welcome to contact us if you find any issue not able to solve or bug.
 
 
-Several examples related to the above papers are presented here. Click the title link to see each example.
-## [Train a LSTM model to learn SMAP soil moisture](example/demo-LSTM-Tutorial.ipynb)
-The example dataset is embedded in this repo and can be found [here](example/data)
-Can also use [this script](example/train-lstm.py) to train model if you don't want to work with Jupyter Notebook
-
-## [Train a LSTM data integration model to make streamflow forecast](example/StreamflowExample-DI.py)
-The dataset used is NCAR CAMELS dataset. Download CAMELS following [this link](https://ral.ucar.edu/solutions/products/camels).
+Several examples related to the above papers are presented here. **Click the title link** to see each example.
+## [1.Train a LSTM data integration model to make streamflow forecast](example/StreamflowExample-DI.py)
+The dataset used is NCAR CAMELS dataset. Download CAMELS following [this link](https://ral.ucar.edu/solutions/products/camels). 
+Please download both forcing, observation data `CAMELS time series meteorology, observed flow, meta data (.zip)` and basin attributes `CAMELS Attributes (.zip)`. 
+Put two unzipped folders under the same directory, like `your/path/to/Camels/basin_timeseries_v1p2_metForcing_obsFlow`, and `your/path/to/Camels/camels_attributes_v2.0`. Set the directory path `your/path/to/Camels`
+as the variable `rootDatabase` inside the code later.
 
 Computational benchmark: training of CAMELS data (w/ or w/o data integration) with 671 basins, 10 years, 300 epochs, in ~1 hour with GPU.
 
-## [Train LSTM and CNN-LSTM models for prediction in ungauged regions](example/PUR/trainPUR-Reg.py)
-The dataset used is also NCAR CAMELS as above. Use [this code](example/PUR/testPUR-Reg.py) to test your saved models after training finished.
+## [2.Train LSTM and CNN-LSTM models for prediction in ungauged regions](example/PUR/trainPUR-Reg.py)
+The dataset used is also NCAR CAMELS. Follow the instructions in the first example above to download and unzip the dataset. Use [this code](example/PUR/testPUR-Reg.py) to test your saved models after training finished.
 
-## [Estimate uncertainty of a LSTM network ](example/train-lstm-mca.py)
+## [3.Train a LSTM model to learn SMAP soil moisture](example/demo-LSTM-Tutorial.ipynb)
+The example dataset is embedded in this repo and can be found [here](example/data)
+Can also use [this script](example/train-lstm.py) to train model if you don't want to work with Jupyter Notebook
+
+## [4.Estimate uncertainty of a LSTM network ](example/train-lstm-mca.py)
 
 # License
 Non-Commercial Software License Agreement

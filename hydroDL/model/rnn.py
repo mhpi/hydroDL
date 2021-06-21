@@ -298,7 +298,7 @@ class CudnnLstm(torch.nn.Module):
                 1, batchSize, self.hiddenSize, requires_grad=False)
 
         # cuDNN backend - disabled flat weight
-        handle = torch.backends.cudnn.get_handle()
+        # handle = torch.backends.cudnn.get_handle()
         if doDrop is True:
             self.reset_mask()
             weight = [
@@ -309,9 +309,17 @@ class CudnnLstm(torch.nn.Module):
         else:
             weight = [self.w_ih, self.w_hh, self.b_ih, self.b_hh]
 
-        output, hy, cy, reserve, new_weight_buf = torch._cudnn_rnn(
-            input, weight, 4, None, hx, cx, torch.backends.cudnn.CUDNN_LSTM,
-            self.hiddenSize, 1, False, 0, self.training, False, (), None)
+        # output, hy, cy, reserve, new_weight_buf = torch._cudnn_rnn(
+        #     input, weight, 4, None, hx, cx, torch.backends.cudnn.CUDNN_LSTM,
+        #     self.hiddenSize, 1, False, 0, self.training, False, (), None)
+        if torch.__version__ < "1.8":
+            output, hy, cy, reserve, new_weight_buf = torch._cudnn_rnn(
+                input, weight, 4, None, hx, cx, 2,  # 2 means LSTM
+                self.hiddenSize, 1, False, 0, self.training, False, (), None)
+        else:
+            output, hy, cy, reserve, new_weight_buf = torch._cudnn_rnn(
+                input, weight, 4, None, hx, cx, 2,  # 2 means LSTM
+                self.hiddenSize, 0, 1, False, 0, self.training, False, (), None)
         return output, (hy, cy)
 
     @property

@@ -30,12 +30,15 @@ EPOCH = 300
 BATCH_SIZE=100
 RHO=365
 HIDDENSIZE=256
-saveEPOCH = 5 # save model for every "saveEPOCH" epochs
+saveEPOCH = 10 # save model for every "saveEPOCH" epochs
 Ttrain=[19851001, 19951001] # training period
 LCrange = [19851001, 19951001]
 
 # Define root directory of database and output
 # Modify this based on your own location of CAMELS dataset
+# Following the data download instruction in README file, you should organize the folders like
+# 'your/path/to/Camels/basin_timeseries_v1p2_metForcing_obsFlow' and 'your/path/to/Camels/camels_attributes_v2.0'
+# Then 'rootDatabase' here should be 'your/path/to/Camels'
 # You can also define the database directory in hydroDL/__init__.py by modifying pathCamels['DB'] variable
 
 rootDatabase = os.path.join(os.path.sep, 'scratch', 'Camels')  # CAMELS dataset root directory

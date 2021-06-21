@@ -25,7 +25,7 @@ interfaceOpt = 1
 # Options for training and testing
 # 0: train base model without DI
 # 1: train DI model
-# 0,1: do both at the same time
+# 0,1: do both base and DI model
 # 2: test trained models
 Action = [0,1]
 # gpuid = 0
@@ -36,7 +36,7 @@ EPOCH = 300
 BATCH_SIZE = 100
 RHO = 365
 HIDDENSIZE = 256
-saveEPOCH = 20 # save model for every "saveEPOCH" epochs
+saveEPOCH = 10 # save model for every "saveEPOCH" epochs
 Ttrain = [19851001, 19951001]  # Training period
 
 # Fix random seed
@@ -51,10 +51,15 @@ torch.backends.cudnn.benchmark = False
 # We use the mean discharge of 6 runnings with different seeds to account for randomness and report results
 
 # Define root directory of database and output
-# Modify this based on your own location
+# Modify this based on your own location of CAMELS dataset.
+# Following the data download instruction in README file, you should organize the folders like
+# 'your/path/to/Camels/basin_timeseries_v1p2_metForcing_obsFlow' and 'your/path/to/Camels/camels_attributes_v2.0'
+# Then 'rootDatabase' here should be 'your/path/to/Camels'
+# You can also define the database directory in hydroDL/__init__.py by modifying pathCamels['DB'] variable
 rootDatabase = os.path.join(os.path.sep, 'scratch', 'Camels')  # CAMELS dataset root directory: /scratch/Camels
-rootOut = os.path.join(os.path.sep, 'data', 'rnnStreamflow')  # Model output root directory: /data/rnnStreamflow
 camels.initcamels(rootDatabase)  # initialize three camels module-scope variables in camels.py: dirDB, gageDict, statDict
+
+rootOut = os.path.join(os.path.sep, 'data', 'rnnStreamflow')  # Root directory to save training results: /data/rnnStreamflow
 
 # Define all the configurations into dictionary variables
 # three purposes using these dictionaries. 1. saved as configuration logging file. 2. for future testing. 3. can also
@@ -229,10 +234,10 @@ if 2 in Action:
     TestEPOCH = 300 # choose the model to test after trained "TestEPOCH" epoches
     # generate a folder name list containing all the tested model output folders
     caseLst = ['All-85-95']
-    nDayLst = [1, 3]
+    nDayLst = [1, 3]  # which DI models to test: DI(1), DI(3)
     for nDay in nDayLst:
         caseLst.append('All-85-95-DI' + str(nDay))
-    outLst = [os.path.join(rootOut, save_path, x) for x in caseLst]
+    outLst = [os.path.join(rootOut, save_path, x) for x in caseLst]  # outLst includes all the directories to test
     subset = 'All'  # 'All': use all the CAMELS gages to test; Or pass the gage list
     tRange = [19951001, 20051001]  # Testing period
     testBatch = 100 # do batch forward to save GPU memory
