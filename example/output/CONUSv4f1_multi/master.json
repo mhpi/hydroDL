@@ -1,0 +1,67 @@
+{
+    "out": "/home/kxf227/work/GitHUB/pyRnnSMAP/example/output/CONUSv4f1_multi",
+    "data": {
+        "name": "hydroDL.data.dbCsv.DataframeCsv",
+        "rootDB": "/mnt/sdc/rnnSMAP/Database_SMAPgrid/Daily_L3_NA",
+        "subset": "CONUSv4f1",
+        "varT": [
+            "APCP_FORA",
+            "DLWRF_FORA",
+            "DSWRF_FORA",
+            "TMP_2_FORA",
+            "SPFH_2_FORA",
+            "VGRD_10_FORA",
+            "UGRD_10_FORA"
+        ],
+        "varC": [
+            "Bulk",
+            "Capa",
+            "Clay",
+            "NDVI",
+            "Sand",
+            "Silt",
+            "flag_albedo",
+            "flag_extraOrd",
+            "flag_landcover",
+            "flag_roughness",
+            "flag_vegDense",
+            "flag_waterbody"
+        ],
+        "target": [
+            "SMAP_AM",
+            "SOILM_0-10_NOAH"
+        ],
+        "tRange": [
+            20150401,
+            20160401
+        ],
+        "doNorm": [
+            true,
+            true
+        ],
+        "rmNan": [
+            true,
+            false
+        ],
+        "daObs": 0
+    },
+    "model": {
+        "name": "hydroDL.model.rnn.CudnnLstmModel",
+        "nx": 19,
+        "ny": 4,
+        "hiddenSize": 256,
+        "doReLU": true
+    },
+    "loss": {
+        "name": "hydroDL.model.crit.SigmaLoss",
+        "prior": "gauss"
+    },
+    "train": {
+        "miniBatch": [
+            100,
+            30
+        ],
+        "nEpoch": 100,
+        "saveEpoch": 100
+    }
+}

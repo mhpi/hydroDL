@@ -1,27 +1,61 @@
 This code contains deep learning code used to modeling hydrologic systems, from soil moisture to streamflow, from projection to forecast. 
 
+This released code depends on our hydroDL repository, please follow our original github repository where we will release new updates occasionally
+https://github.com/mhpi/hydroDL
 # Citations
 
 If you find our code to be useful, please cite the following papers:
 
-Feng, DP, K. Fang and CP. Shen, [Enhancing streamflow forecast and extracting insights using continental-scale long-short term memory networks with data integration], Water Resources Reserach (2020), https://doi.org/10.1029/2019WR026793
+Feng, DP., Lawson, K., and CP. Shen, Mitigating prediction error of deep learning streamflow models in large data-sparse regions with ensemble modeling and soft data, Geophysical Research Letters (2021, Accepted) arXiv preprint https://arxiv.org/abs/2011.13380
 
-Fang, K., CP. Shen, D. Kifer and X. Yang, [Prolongation of SMAP to Spatio-temporally Seamless Coverage of Continental US Using a Deep Learning Neural Network], Geophysical Research Letters, doi: 10.1002/2017GL075619, preprint accessible at: arXiv:1707.06611 (2017) https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075619
+Feng, DP, K. Fang and CP. Shen, Enhancing streamflow forecast and extracting insights using continental-scale long-short term memory networks with data integration, Water Resources Research (2020), https://doi.org/10.1029/2019WR026793
 
-Shen, CP., [A trans-disciplinary review of deep learning research and its relevance for water resources scientists], Water Resources Research. 54(11), 8558-8593, doi: 10.1029/2018WR022643 (2018) https://doi.org/10.1029/2018WR022643
+Shen, CP., A trans-disciplinary review of deep learning research and its relevance for water resources scientists, Water Resources Research. 54(11), 8558-8593, doi: 10.1029/2018WR022643 (2018) https://doi.org/10.1029/2018WR022643
 
-Major code contributor: Kuai Fang (PhD., Penn State), and smaller contribution from Dapeng Feng (PhD Student, Penn State)
+Major code contributor: Dapeng Feng (PhD Student, Penn State) and Kuai Fang (PhD., Penn State)
 
-A new release is expected in early July, 2020, together with video code walkthrough.
+# Examples
+The environment we are using is shown as the file `repoenv.yml`. To create the same conda environment, please run:
+  ```Shell
+conda env create -f repoenv.yml
+```
+Activate the installed environment before running the code:
+  ```Shell
+conda activate mhpihydrodl
+```
+You can also use this `Environment Setup_Tutorial.pdf` document as a reference to set up your environment and solve some frequently encountered questions. 
+There may be a small compatibility issue with our code when using very high pyTorch version. Welcome to contact us if you find any issue not able to solve or bug.
+
+
+Several examples related to the above papers are presented here. **Click the title link** to see each example.
+## [1.Train a LSTM data integration model to make streamflow forecast](example/StreamflowExample-DI.py)
+The dataset used is NCAR CAMELS dataset. Download CAMELS following [this link](https://ral.ucar.edu/solutions/products/camels). 
+Please download both forcing, observation data `CAMELS time series meteorology, observed flow, meta data (.zip)` and basin attributes `CAMELS Attributes (.zip)`. 
+Put two unzipped folders under the same directory, like `your/path/to/Camels/basin_timeseries_v1p2_metForcing_obsFlow`, and `your/path/to/Camels/camels_attributes_v2.0`. Set the directory path `your/path/to/Camels`
+as the variable `rootDatabase` inside the code later.
+
 Computational benchmark: training of CAMELS data (w/ or w/o data integration) with 671 basins, 10 years, 300 epochs, in ~1 hour with GPU.
 
-# Example
-Two examples with sample data are wrapped up including
- - [train a LSTM network to learn SMAP soil moisture](example/train-lstm.py)
- - [estimate uncertainty of a LSTM network ](example/train-lstm-mca.py)
+Related papers:  
+Feng et al. (2020). [Enhancing streamflow forecast and extracting insights using long‐short term memory networks with data integration at continental scales](https://doi.org/10.1029/2019WR026793). Water Resources Research.
 
-A demo for temporal test is [here](example/demo-temporal-test.ipynb)
+## [2.Train LSTM and CNN-LSTM models for prediction in ungauged regions](example/PUR/trainPUR-Reg.py)
+The dataset used is also NCAR CAMELS. Follow the instructions in the first example above to download and unzip the dataset. Use [this code](example/PUR/testPUR-Reg.py) to test your saved models after training finished.
 
+Related papers:  
+Feng et al. (2021, Accepted). Mitigating prediction error of deep learning streamflow models in large data-sparse regions with ensemble modeling and soft data. Geophysical Research Letters.  
+Feng et al. (2020). [Enhancing streamflow forecast and extracting insights using long‐short term memory networks with data integration at continental scales](https://doi.org/10.1029/2019WR026793). Water Resources Research.
+
+## [3.Train a LSTM model to learn SMAP soil moisture](example/demo-LSTM-Tutorial.ipynb)
+The example dataset is embedded in this repo and can be found [here](example/data).
+You can also use [this script](example/train-lstm.py) to train model if you don't want to work with Jupyter Notebook.
+
+Related papers:  
+Fang et al. (2017), [Prolongation of SMAP to Spatio-temporally Seamless Coverage of Continental US Using a Deep Learning Neural Network](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075619), Geophysical Research Letters.
+
+## [4.Estimate uncertainty of a LSTM network ](example/train-lstm-mca.py)
+Related papers:  
+Fang et al. (2020). [Evaluating the potential and challenges of an uncertainty quantification method for long short-term memory models for soil moisture predictions](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020WR028095), Water Resources Research.
 # License
 Non-Commercial Software License Agreement
 
@@ -54,88 +88,3 @@ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-
-
-# Database description
-## Database Structure
-```
-├── CONUS
-│   ├── 2000
-│   │   ├── [Variable-Name].csv
-│   │   ├── ...
-│   │   ├── timeStr.csv
-│   │   └── time.csv
-│   ├── ...
-│   ├── 2017
-│   │   └── ...
-│   ├── const
-│   │   ├── [Constant-Variable-Name].csv
-│   │   └── ...
-│   └── crd.csv
-├── CONUSv4f1
-│   └── ...
-├── Statistics
-│   ├── [Variable-Name]_stat.csv
-│   ├── ...
-│   ├── const_[Constant-Variable-Name]_stat.csv
-│   └── ...
-├── Subset
-│   ├── CONUS.csv
-│   └── CONUSv4f1.csv
-└── Variable
-    ├── varConstLst.csv
-    └── varLst.csv
-```
-### 1. Dataset folders (*CONUS* , *CONUSv4f1*)
-Data folder contains all data including both training and testing, time-dependent variables and constant variables. 
-In example data structure, there are two dataset folders - *CONUS* and *CONUSv4f1*. Those data are saved in:
-
- - **year/[Variable-Name].csv**:
-
-A csv file of size [#grid, #time], where each column is one grid and each row is one time step. This file saved data of a time-dependent variable of current year. For example, *CONUS/2010/SMAP_AM.csv* is SMAP data of 2002 on the CONUS. 
-
-Most time-dependent varibles comes from NLDAS, which included two forcing product (FORA, FORB) and three simulations product land surface models (NOAH, MOS, VIC). Variables are named as *[variable]\_[product]\_[layer]*, and reference of variable can be found in [NLDAS document](https://hydro1.gesdisc.eosdis.nasa.gov/data/NLDAS/README.NLDAS2.pdf). For example, *SOILM_NOAH_0-10* refers to soil moisture product simulated by NOAH model at 0-10 cm. 
-
-Other than NLDAS, SMAP data are also saved in same format but always used as target. In level 3 database, there are two SMAP csv files which are only available after 2015: *SMAP_AM.csv* and *SMAP_PM.csv*. 
-
--9999 refers to NaN. 
-
-- **year/time.csv** & **timeStr.csv**
-
-Dates csv file of current year folder, of size [#date]. *time.csv* recorded Matlab datenum and *timeStr.csv* recorded date in format of yyyy-mm-dd.
-
-Notice that each year start from and end before April 1st. For example data in folder 2010 is actually data from 2010-04-01 to 2011-03-31. The reason is that SMAP launched at April 1st. 
-
-- **const/[Constant Variable Name].csv**
-
-csv file for constant variables of size [#grid]. 
-
-- **crd.csv**
-
-Coordinate of all grids. First Column is latitude and second column is longitude. Each row refers a grid.
-
-### 2. Statistics folder
-
-Stored statistics of variables in order to do data normalization during training. Named as:
-- Time dependent variables-> [variable name].csv
-- Constant variables-> const_[variable name].csv
-
-Each file wrote four statistics of variable:
-- 90 percentile
-- 10 percentile
-- mean
-- std
-
-During training we normalize data by (data - mean) / std
-
-### 3. Subset folder
-Subset refers to a subset of grids from the complete dataset (CONUS or Global). For example, a subset only contains grids in Pennsylvania. All subsets (including the CONUS or Global dataset) will have a *[subset name].csv* file in the *Subset* folder. *[subset name].csv* is wrote as:
-- line 1 -> root dataset 
-- line 2 - end -> indexs of subset grids in rootset (start from 1)
-
-If the index is -1 means all grid, from example CONUS dataset. 
-
-### 4. Variable folder
-Stored csv files contains a list of variables. Used as input to training code. Time-dependent variables and constant variables should be stored seperately. For example:
-- varLst.csv -> a list of time-dependent variables used as training predictors.
-- varLst.csv -> a list of constant variables used as training predictors.

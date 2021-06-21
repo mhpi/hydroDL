@@ -2,7 +2,7 @@
     "out": "/home/kxf227/work/GitHUB/pyRnnSMAP/example/output/CONUSv4f1_sigma",
     "data": {
         "name": "hydroDL.data.dbCsv.DataframeCsv",
-        "path": "/home/kxf227/work/GitHUB/pyRnnSMAP/example/data",
+        "rootDB": "/home/kxf227/work/GitHUB/pyRnnSMAP/example/data",
         "subset": "CONUSv4f1",
         "varT": [
             "APCP_FORA",
@@ -30,7 +30,7 @@
         "target": "SMAP_AM",
         "tRange": [
             20150401,
-            20160331
+            20160401
         ],
         "doNorm": [
             true,
@@ -39,7 +39,8 @@
         "rmNan": [
             true,
             false
-        ]
+        ],
+        "daObs": 0
     },
     "model": {
         "name": "hydroDL.model.rnn.CudnnLstmModel",
@@ -57,7 +58,7 @@
             100,
             30
         ],
-        "nEpoch": 500,
-        "saveEpoch": 100
+        "nEpoch": 5,
+        "saveEpoch": 5
     }
 }

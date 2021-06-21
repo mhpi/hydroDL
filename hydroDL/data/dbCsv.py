@@ -1,5 +1,7 @@
 """ 
-read and extract data from CSV database
+read and extract data from CSV database.
+This module allows you to read time series inputs/forcings and define subsets
+to read from.
 """
 import os
 import numpy as np
@@ -10,20 +12,32 @@ import hydroDL.utils as utils
 from . import Dataframe, DataModel
 import hydroDL
 
+################################################
+# The definitions between ### are for convenience only.
+# You don't need them unless you are calling them from outside,
+# e.g., "dbCsv.xxx", or if you call DataModelCsv without supplying 
+# actual arguments
+# This block shouldn't be here.
+# We will phase out these definitions from this file gradually.
+
 varTarget = ['SMAP_AM']
+# ===== SMAP varForcing =====
 varForcing = [
     'APCP_FORA', 'DLWRF_FORA', 'DSWRF_FORA', 'TMP_2_FORA', 'SPFH_2_FORA',
     'VGRD_10_FORA', 'UGRD_10_FORA'
 ]
-varSoilM = [
-    'APCP_FORA', 'DLWRF_FORA', 'DSWRF_FORA', 'TMP_2_FORA', 'SPFH_2_FORA',
-    'VGRD_10_FORA', 'UGRD_10_FORA', 'SOILM_0-10_NOAH'
-]
+
 varConst = [
     'Bulk', 'Capa', 'Clay', 'NDVI', 'Sand', 'Silt', 'flag_albedo',
     'flag_extraOrd', 'flag_landcover', 'flag_roughness', 'flag_vegDense',
     'flag_waterbody'
 ]
+
+varSoilM = [
+    'APCP_FORA', 'DLWRF_FORA', 'DSWRF_FORA', 'TMP_2_FORA', 'SPFH_2_FORA',
+    'VGRD_10_FORA', 'UGRD_10_FORA', 'SOILM_0-10_NOAH'
+]
+
 varForcingGlobal = ['GPM', 'Wind', 'Tair', 'Psurf', 'Qair', 'SWdown', 'LWdown']
 varSoilmGlobal = [
     'SoilMoi0-10', 'GPM', 'Wind', 'Tair', 'Psurf', 'Qair', 'SWdown', 'LWdown'
@@ -34,6 +48,7 @@ varConstGlobal = [
     'flag_waterbody'
 ]
 
+################################################
 
 def t2yrLst(tArray):
     t1 = tArray[0].astype(object)
@@ -68,6 +83,15 @@ def readDBinfo(*, rootDB, subset):
         indSkip = np.delete(indAll, indSub)
     crd = crdRoot[indSub, :]
     return rootName, crd, indSub, indSkip
+
+
+def readSubset(*, rootDB, subset):
+    subsetFile = os.path.join(rootDB, "Subset", subset + ".csv")
+    print('reading subset ' + subsetFile)
+    dfSubset = pd.read_csv(subsetFile, dtype=np.int64, header=0)
+    rootName = dfSubset.columns.values[0]
+    indSub = dfSubset.values.flatten()
+    return rootName, indSub
 
 
 def readDBtime(*, rootDB, rootName, yrLst):
@@ -142,7 +166,7 @@ def transNormSigma(data, *, rootDB, fieldName, fromRaw=True):
     if fromRaw is True:
         dataOut = np.log((data / stat[3])**2)
     else:
-        dataOut = np.sqrt(np.exp(data)) * stat[3]                  
+        dataOut = np.sqrt(np.exp(data)) * stat[3]
     return (dataOut)
 
 

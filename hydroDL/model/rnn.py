@@ -4,6 +4,9 @@ import torch.nn as nn
 from torch.nn import Parameter
 import torch.nn.functional as F
 from .dropout import DropMask, createMask
+from . import cnn
+import csv
+import numpy as np
 
 
 class LSTMcell_untied(torch.nn.Module):
@@ -275,8 +278,12 @@ class CudnnLstm(torch.nn.Module):
         for weight in self.parameters():
             weight.data.uniform_(-stdv, stdv)
 
-    def forward(self, input, hx=None, cx=None, doDropMC=False):
-        if self.dr > 0 and (doDropMC is True or self.training is True):
+
+    def forward(self, input, hx=None, cx=None, doDropMC=False, dropoutFalse=False):
+        # dropoutFalse: it will ensure doDrop is false, unless doDropMC is true
+        if dropoutFalse and (not doDropMC):
+            doDrop = False
+        elif self.dr > 0 and (doDropMC is True or self.training is True):
             doDrop = True
         else:
             doDrop = False
@@ -291,7 +298,7 @@ class CudnnLstm(torch.nn.Module):
                 1, batchSize, self.hiddenSize, requires_grad=False)
 
         # cuDNN backend - disabled flat weight
-        handle = torch.backends.cudnn.get_handle()
+        # handle = torch.backends.cudnn.get_handle()
         if doDrop is True:
             self.reset_mask()
             weight = [
@@ -302,9 +309,17 @@ class CudnnLstm(torch.nn.Module):
         else:
             weight = [self.w_ih, self.w_hh, self.b_ih, self.b_hh]
 
-        output, hy, cy, reserve, new_weight_buf = torch._cudnn_rnn(
-            input, weight, 4, None, hx, cx, torch.backends.cudnn.CUDNN_LSTM,
-            self.hiddenSize, 1, False, 0, self.training, False, (), None)
+        # output, hy, cy, reserve, new_weight_buf = torch._cudnn_rnn(
+        #     input, weight, 4, None, hx, cx, torch.backends.cudnn.CUDNN_LSTM,
+        #     self.hiddenSize, 1, False, 0, self.training, False, (), None)
+        if torch.__version__ < "1.8":
+            output, hy, cy, reserve, new_weight_buf = torch._cudnn_rnn(
+                input, weight, 4, None, hx, cx, 2,  # 2 means LSTM
+                self.hiddenSize, 1, False, 0, self.training, False, (), None)
+        else:
+            output, hy, cy, reserve, new_weight_buf = torch._cudnn_rnn(
+                input, weight, 4, None, hx, cx, 2,  # 2 means LSTM
+                self.hiddenSize, 0, 1, False, 0, self.training, False, (), None)
         return output, (hy, cy)
 
     @property
@@ -312,6 +327,26 @@ class CudnnLstm(torch.nn.Module):
         return [[getattr(self, weight) for weight in weights]
                 for weights in self._all_weights]
 
+class CNN1dkernel(torch.nn.Module):
+    def __init__(self,
+                 *,
+                 ninchannel=1,
+                 nkernel=3,
+                 kernelSize=3,
+                 stride=1,
+                 padding=0):
+        super(CNN1dkernel, self).__init__()
+        self.cnn1d = torch.nn.Conv1d(
+            in_channels=ninchannel,
+            out_channels=nkernel,
+            kernel_size=kernelSize,
+            padding=padding,
+            stride=stride,
+        )
+
+    def forward(self, x):
+        output = F.relu(self.cnn1d(x))
+        return output
 
 class CudnnLstmModel(torch.nn.Module):
     def __init__(self, *, nx, ny, hiddenSize, dr=0.5):
@@ -326,12 +361,450 @@ class CudnnLstmModel(torch.nn.Module):
             inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr)
         self.linearOut = torch.nn.Linear(hiddenSize, ny)
         self.gpu = 1
+        # self.drtest = torch.nn.Dropout(p=0.4)
 
-    def forward(self, x, doDropMC=False):
+    def forward(self, x, doDropMC=False, dropoutFalse=False):
+        x0 = F.relu(self.linearIn(x))
+        outLSTM, (hn, cn) = self.lstm(x0, doDropMC=doDropMC, dropoutFalse=dropoutFalse)
+        # outLSTMdr = self.drtest(outLSTM)
+        out = self.linearOut(outLSTM)
+        return out
+
+
+class CNN1dLSTMmodel(torch.nn.Module):
+    def __init__(self, *, nx, ny, nobs, hiddenSize,
+                 nkernel=(10,5), kernelSize=(3,3), stride=(2,1), dr=0.5, poolOpt=None):
+        # two convolutional layer
+        super(CNN1dLSTMmodel, self).__init__()
+        self.nx = nx
+        self.ny = ny
+        self.obs = nobs
+        self.hiddenSize = hiddenSize
+        nlayer = len(nkernel)
+        self.features = nn.Sequential()
+        ninchan = 1
+        Lout = nobs
+        for ii in range(nlayer):
+            ConvLayer = CNN1dkernel(
+                ninchannel=ninchan, nkernel=nkernel[ii], kernelSize=kernelSize[ii], stride=stride[ii])
+            self.features.add_module('CnnLayer%d' % (ii + 1), ConvLayer)
+            ninchan = nkernel[ii]
+            Lout = cnn.calConvSize(lin=Lout, kernel=kernelSize[ii], stride=stride[ii])
+            self.features.add_module('Relu%d' % (ii + 1), nn.ReLU())
+            if poolOpt is not None:
+                self.features.add_module('Pooling%d' % (ii + 1), nn.MaxPool1d(poolOpt[ii]))
+                Lout = cnn.calPoolSize(lin=Lout, kernel=poolOpt[ii])
+        self.Ncnnout = int(Lout*nkernel[-1]) # total CNN feature number after convolution
+        Nf = self.Ncnnout + nx
+        self.linearIn = torch.nn.Linear(Nf, hiddenSize)
+        self.lstm = CudnnLstm(
+            inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr)
+        self.linearOut = torch.nn.Linear(hiddenSize, ny)
+        self.gpu = 1
+
+    def forward(self, x, z, doDropMC=False):
+        nt, ngrid, nobs = z.shape
+        z = z.view(nt*ngrid, 1, nobs)
+        z0 = self.features(z)
+        # z0 = (ntime*ngrid) * nkernel * sizeafterconv
+        z0 = z0.view(nt, ngrid, self.Ncnnout)
+        x0 = torch.cat((x, z0), dim=2)
+        x0 = F.relu(self.linearIn(x0))
+        outLSTM, (hn, cn) = self.lstm(x0, doDropMC=doDropMC)
+        out = self.linearOut(outLSTM)
+        # out = rho/time * batchsize * Ntargetvar
+        return out
+
+class CNN1dLSTMInmodel(torch.nn.Module):
+    # Directly add the CNN extracted features into LSTM inputSize
+    def __init__(self, *, nx, ny, nobs, hiddenSize,
+                 nkernel=(10,5), kernelSize=(3,3), stride=(2,1), dr=0.5, poolOpt=None, cnndr=0.0):
+        # two convolutional layer
+        super(CNN1dLSTMInmodel, self).__init__()
+        self.nx = nx
+        self.ny = ny
+        self.obs = nobs
+        self.hiddenSize = hiddenSize
+        nlayer = len(nkernel)
+        self.features = nn.Sequential()
+        ninchan = 1
+        Lout = nobs
+        for ii in range(nlayer):
+            ConvLayer = CNN1dkernel(
+                ninchannel=ninchan, nkernel=nkernel[ii], kernelSize=kernelSize[ii], stride=stride[ii])
+            self.features.add_module('CnnLayer%d' % (ii + 1), ConvLayer)
+            if cnndr != 0.0:
+                self.features.add_module('dropout%d' % (ii + 1), nn.Dropout(p=cnndr))
+            ninchan = nkernel[ii]
+            Lout = cnn.calConvSize(lin=Lout, kernel=kernelSize[ii], stride=stride[ii])
+            self.features.add_module('Relu%d' % (ii + 1), nn.ReLU())
+            if poolOpt is not None:
+                self.features.add_module('Pooling%d' % (ii + 1), nn.MaxPool1d(poolOpt[ii]))
+                Lout = cnn.calPoolSize(lin=Lout, kernel=poolOpt[ii])
+        self.Ncnnout = int(Lout*nkernel[-1]) # total CNN feature number after convolution
+        Nf = self.Ncnnout + hiddenSize
+        self.linearIn = torch.nn.Linear(nx, hiddenSize)
+        self.lstm = CudnnLstm(
+            inputSize=Nf, hiddenSize=hiddenSize, dr=dr)
+        self.linearOut = torch.nn.Linear(hiddenSize, ny)
+        self.gpu = 1
+
+    def forward(self, x, z, doDropMC=False):
+        nt, ngrid, nobs = z.shape
+        z = z.view(nt*ngrid, 1, nobs)
+        z0 = self.features(z)
+        # z0 = (ntime*ngrid) * nkernel * sizeafterconv
+        z0 = z0.view(nt, ngrid, self.Ncnnout)
+        x = F.relu(self.linearIn(x))
+        x0 = torch.cat((x, z0), dim=2)
+        outLSTM, (hn, cn) = self.lstm(x0, doDropMC=doDropMC)
+        out = self.linearOut(outLSTM)
+        # out = rho/time * batchsize * Ntargetvar
+        return out
+
+class CNN1dLCmodel(torch.nn.Module):
+    # add the CNN extracted features into original LSTM input, then pass through linear layer
+    def __init__(self, *, nx, ny, nobs, hiddenSize,
+                 nkernel=(10,5), kernelSize=(3,3), stride=(2,1), dr=0.5, poolOpt=None, cnndr=0.0):
+        # two convolutional layer
+        super(CNN1dLCmodel, self).__init__()
+        self.nx = nx
+        self.ny = ny
+        self.obs = nobs
+        self.hiddenSize = hiddenSize
+        nlayer = len(nkernel)
+        self.features = nn.Sequential()
+        ninchan = 1 # need to modify the hardcode: 4 for smap and 1 for FDC
+        Lout = nobs
+        for ii in range(nlayer):
+            ConvLayer = CNN1dkernel(
+                ninchannel=ninchan, nkernel=nkernel[ii], kernelSize=kernelSize[ii], stride=stride[ii])
+            self.features.add_module('CnnLayer%d' % (ii + 1), ConvLayer)
+            if cnndr != 0.0:
+                self.features.add_module('dropout%d' % (ii + 1), nn.Dropout(p=cnndr))
+            ninchan = nkernel[ii]
+            Lout = cnn.calConvSize(lin=Lout, kernel=kernelSize[ii], stride=stride[ii])
+            self.features.add_module('Relu%d' % (ii + 1), nn.ReLU())
+            if poolOpt is not None:
+                self.features.add_module('Pooling%d' % (ii + 1), nn.MaxPool1d(poolOpt[ii]))
+                Lout = cnn.calPoolSize(lin=Lout, kernel=poolOpt[ii])
+        self.Ncnnout = int(Lout*nkernel[-1]) # total CNN feature number after convolution
+        Nf = self.Ncnnout + nx
+        self.linearIn = torch.nn.Linear(Nf, hiddenSize)
+        self.lstm = CudnnLstm(
+            inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr)
+        self.linearOut = torch.nn.Linear(hiddenSize, ny)
+        self.gpu = 1
+
+    def forward(self, x, z, doDropMC=False):
+        # z = ngrid*nVar add a channel dimension
+        ngrid = z.shape[0]
+        rho, BS, Nvar = x.shape
+        if len(z.shape) == 2: # for FDC, else 3 dimension for smap
+            z = torch.unsqueeze(z, dim=1)
+        z0 = self.features(z)
+        # z0 = (ngrid) * nkernel * sizeafterconv
+        z0 = z0.view(ngrid, self.Ncnnout).repeat(rho,1,1)
+        x = torch.cat((x, z0), dim=2)
         x0 = F.relu(self.linearIn(x))
         outLSTM, (hn, cn) = self.lstm(x0, doDropMC=doDropMC)
         out = self.linearOut(outLSTM)
+        # out = rho/time * batchsize * Ntargetvar
         return out
+
+class CNN1dLCInmodel(torch.nn.Module):
+    # Directly add the CNN extracted features into LSTM inputSize
+    def __init__(self, *, nx, ny, nobs, hiddenSize,
+                 nkernel=(10,5), kernelSize=(3,3), stride=(2,1), dr=0.5, poolOpt=None, cnndr=0.0):
+        # two convolutional layer
+        super(CNN1dLCInmodel, self).__init__()
+        self.nx = nx
+        self.ny = ny
+        self.obs = nobs
+        self.hiddenSize = hiddenSize
+        nlayer = len(nkernel)
+        self.features = nn.Sequential()
+        ninchan = 1
+        Lout = nobs
+        for ii in range(nlayer):
+            ConvLayer = CNN1dkernel(
+                ninchannel=ninchan, nkernel=nkernel[ii], kernelSize=kernelSize[ii], stride=stride[ii])
+            self.features.add_module('CnnLayer%d' % (ii + 1), ConvLayer)
+            if cnndr != 0.0:
+                self.features.add_module('dropout%d' % (ii + 1), nn.Dropout(p=cnndr))
+            ninchan = nkernel[ii]
+            Lout = cnn.calConvSize(lin=Lout, kernel=kernelSize[ii], stride=stride[ii])
+            self.features.add_module('Relu%d' % (ii + 1), nn.ReLU())
+            if poolOpt is not None:
+                self.features.add_module('Pooling%d' % (ii + 1), nn.MaxPool1d(poolOpt[ii]))
+                Lout = cnn.calPoolSize(lin=Lout, kernel=poolOpt[ii])
+        self.Ncnnout = int(Lout*nkernel[-1]) # total CNN feature number after convolution
+        Nf = self.Ncnnout + hiddenSize
+        self.linearIn = torch.nn.Linear(nx, hiddenSize)
+        self.lstm = CudnnLstm(
+            inputSize=Nf, hiddenSize=hiddenSize, dr=dr)
+        self.linearOut = torch.nn.Linear(hiddenSize, ny)
+        self.gpu = 1
+
+    def forward(self, x, z, doDropMC=False):
+        # z = ngrid*nVar add a channel dimension
+        ngrid, nobs = z.shape
+        rho, BS, Nvar = x.shape
+        z = torch.unsqueeze(z, dim=1)
+        z0 = self.features(z)
+        # z0 = (ngrid) * nkernel * sizeafterconv
+        z0 = z0.view(ngrid, self.Ncnnout).repeat(rho,1,1)
+        x = F.relu(self.linearIn(x))
+        x0 = torch.cat((x, z0), dim=2)
+        outLSTM, (hn, cn) = self.lstm(x0, doDropMC=doDropMC)
+        out = self.linearOut(outLSTM)
+        # out = rho/time * batchsize * Ntargetvar
+        return out
+
+class CudnnInvLstmModel(torch.nn.Module):
+    # using cudnnLstm to extract features from SMAP observations
+    def __init__(self, *, nx, ny, hiddenSize, ninv, nfea, hiddeninv, dr=0.5, drinv=0.5):
+        # two LSTM
+        super(CudnnInvLstmModel, self).__init__()
+        self.nx = nx
+        self.ny = ny
+        self.hiddenSize = hiddenSize
+        self.ninv = ninv
+        self.nfea = nfea
+        self.hiddeninv = hiddeninv
+        self.lstminv = CudnnLstmModel(
+            nx=ninv, ny=nfea, hiddenSize=hiddeninv, dr=drinv)
+        self.lstm = CudnnLstmModel(
+            nx=nfea+nx, ny=ny, hiddenSize=hiddenSize, dr=dr)
+        self.gpu = 1
+
+    def forward(self, x, z, doDropMC=False):
+        Gen = self.lstminv(z)
+        dim = x.shape;
+        nt = dim[0]
+        invpara = Gen[-1, :, :].repeat(nt, 1, 1)
+        x1 = torch.cat((x, invpara), dim=2)
+        out = self.lstm(x1)
+        # out = rho/time * batchsize * Ntargetvar
+        return out
+
+
+class LstmCloseModel(torch.nn.Module):
+    def __init__(self, *, nx, ny, hiddenSize, dr=0.5, fillObs=True):
+        super(LstmCloseModel, self).__init__()
+        self.nx = nx
+        self.ny = ny
+        self.hiddenSize = hiddenSize
+        self.ct = 0
+        self.nLayer = 1
+        self.linearIn = torch.nn.Linear(nx + 1, hiddenSize)
+        # self.lstm = CudnnLstm(
+        #     inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr)
+        self.lstm = LSTMcell_tied(
+            inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr, drMethod='drW')
+        self.linearOut = torch.nn.Linear(hiddenSize, ny)
+        self.gpu = 1
+        self.fillObs = fillObs
+
+    def forward(self, x, y=None):
+        nt, ngrid, nx = x.shape
+        yt = torch.zeros(ngrid, 1).cuda()
+        out = torch.zeros(nt, ngrid, self.ny).cuda()
+        ht = None
+        ct = None
+        resetMask = True
+        for t in range(nt):
+            if self.fillObs is True:
+                ytObs = y[t, :, :]
+                mask = ytObs == ytObs
+                yt[mask] = ytObs[mask]
+            xt = torch.cat((x[t, :, :], yt), 1)
+            x0 = F.relu(self.linearIn(xt))
+            ht, ct = self.lstm(x0, hidden=(ht, ct), resetMask=resetMask)
+            yt = self.linearOut(ht)
+            resetMask = False
+            out[t, :, :] = yt
+        return out
+
+
+class AnnModel(torch.nn.Module):
+    def __init__(self, *, nx, ny, hiddenSize):
+        super(AnnModel, self).__init__()
+        self.hiddenSize = hiddenSize
+        self.i2h = nn.Linear(nx, hiddenSize)
+        self.h2h = nn.Linear(hiddenSize, hiddenSize)
+        self.h2o = nn.Linear(hiddenSize, ny)
+        self.ny = ny
+
+    def forward(self, x, y=None):
+        nt, ngrid, nx = x.shape
+        yt = torch.zeros(ngrid, 1).cuda()
+        out = torch.zeros(nt, ngrid, self.ny).cuda()
+        for t in range(nt):
+            xt = x[t, :, :]
+            ht = F.relu(self.i2h(xt))
+            ht2 = self.h2h(ht)
+            yt = self.h2o(ht2)
+            out[t, :, :] = yt
+        return out
+
+
+class AnnCloseModel(torch.nn.Module):
+    def __init__(self, *, nx, ny, hiddenSize, fillObs=True):
+        super(AnnCloseModel, self).__init__()
+        self.hiddenSize = hiddenSize
+        self.i2h = nn.Linear(nx + 1, hiddenSize)
+        self.h2h = nn.Linear(hiddenSize, hiddenSize)
+        self.h2o = nn.Linear(hiddenSize, ny)
+        self.fillObs = fillObs
+        self.ny = ny
+
+    def forward(self, x, y=None):
+        nt, ngrid, nx = x.shape
+        yt = torch.zeros(ngrid, 1).cuda()
+        out = torch.zeros(nt, ngrid, self.ny).cuda()
+        for t in range(nt):
+            if self.fillObs is True:
+                ytObs = y[t, :, :]
+                mask = ytObs == ytObs
+                yt[mask] = ytObs[mask]
+            xt = torch.cat((x[t, :, :], yt), 1)
+            ht = F.relu(self.i2h(xt))
+            ht2 = self.h2h(ht)
+            yt = self.h2o(ht2)
+            out[t, :, :] = yt
+        return out
+
+
+class LstmCnnCond(nn.Module):
+    def __init__(self,
+                 *,
+                 nx,
+                 ny,
+                 ct,
+                 opt=1,
+                 hiddenSize=64,
+                 cnnSize=32,
+                 cp1=(64, 3, 2),
+                 cp2=(128, 5, 2),
+                 dr=0.5):
+        super(LstmCnnCond, self).__init__()
+
+        # opt == 1: cnn output as initial state of LSTM (h0)
+        # opt == 2: cnn output as additional output of LSTM
+        # opt == 3: cnn output as constant input of LSTM
+
+        if opt == 1:
+            cnnSize = hiddenSize
+
+        self.nx = nx
+        self.ny = ny
+        self.ct = ct
+        self.ctRm = False
+        self.hiddenSize = hiddenSize
+        self.opt = opt
+
+        self.cnn = cnn.Cnn1d(nx=nx, nt=ct, cnnSize=cnnSize, cp1=cp1, cp2=cp2)
+
+        self.lstm = CudnnLstm(
+            inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr)
+        if opt == 3:
+            self.linearIn = torch.nn.Linear(nx + cnnSize, hiddenSize)
+        else:
+            self.linearIn = torch.nn.Linear(nx, hiddenSize)
+        if opt == 2:
+            self.linearOut = torch.nn.Linear(hiddenSize + cnnSize, ny)
+        else:
+            self.linearOut = torch.nn.Linear(hiddenSize, ny)
+
+    def forward(self, x, xc):
+        # x- [nt,ngrid,nx]
+        x1 = xc
+        x1 = self.cnn(x1)
+        x2 = x
+        if self.opt == 1:
+            x2 = F.relu(self.linearIn(x2))
+            x2, (hn, cn) = self.lstm(x2, hx=x1[None, :, :])
+            x2 = self.linearOut(x2)
+        elif self.opt == 2:
+            x1 = x1[None, :, :].repeat(x2.shape[0], 1, 1)
+            x2 = F.relu(self.linearIn(x2))
+            x2, (hn, cn) = self.lstm(x2)
+            x2 = self.linearOut(torch.cat([x2, x1], 2))
+        elif self.opt == 3:
+            x1 = x1[None, :, :].repeat(x2.shape[0], 1, 1)
+            x2 = torch.cat([x2, x1], 2)
+            x2 = F.relu(self.linearIn(x2))
+            x2, (hn, cn) = self.lstm(x2)
+            x2 = self.linearOut(x2)
+
+        return x2
+
+
+class LstmCnnForcast(nn.Module):
+    def __init__(self,
+                 *,
+                 nx,
+                 ny,
+                 ct,
+                 opt=1,
+                 hiddenSize=64,
+                 cnnSize=32,
+                 cp1=(64, 3, 2),
+                 cp2=(128, 5, 2),
+                 dr=0.5):
+        super(LstmCnnForcast, self).__init__()
+
+        if opt == 1:
+            cnnSize = hiddenSize
+
+        self.nx = nx
+        self.ny = ny
+        self.ct = ct
+        self.ctRm = True
+        self.hiddenSize = hiddenSize
+        self.opt = opt
+        self.cnnSize = cnnSize
+
+        if opt == 1:
+            self.cnn = cnn.Cnn1d(
+                nx=nx + 1, nt=ct, cnnSize=cnnSize, cp1=cp1, cp2=cp2)
+        if opt == 2:
+            self.cnn = cnn.Cnn1d(
+                nx=1, nt=ct, cnnSize=cnnSize, cp1=cp1, cp2=cp2)
+
+        self.lstm = CudnnLstm(
+            inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr)
+        self.linearIn = torch.nn.Linear(nx + cnnSize, hiddenSize)
+        self.linearOut = torch.nn.Linear(hiddenSize, ny)
+
+    def forward(self, x, y):
+        # x- [nt,ngrid,nx]
+        nt, ngrid, nx = x.shape
+        ct = self.ct
+        pt = nt - ct
+
+        if self.opt == 1:
+            x1 = torch.cat((y, x), dim=2)
+        elif self.opt == 2:
+            x1 = y
+
+        x1out = torch.zeros([pt, ngrid, self.cnnSize]).cuda()
+        for k in range(pt):
+            x1out[k, :, :] = self.cnn(x1[k:k + ct, :, :])
+
+        x2 = x[ct:nt, :, :]
+        x2 = torch.cat([x2, x1out], 2)
+        x2 = F.relu(self.linearIn(x2))
+        x2, (hn, cn) = self.lstm(x2)
+        x2 = self.linearOut(x2)
+
+        return x2
+
+class CudnnLstmModel_R2P(torch.nn.Module):
+
+    def __init__(self, **arg):
+        pass
 
 
 class CpuLstmModel(torch.nn.Module):
@@ -367,4 +840,10 @@ class CpuLstmModel(torch.nn.Module):
             resetMask = False
             out[t, :, :] = yt
         return out
+
+
+class CudnnInv_HBVModel(torch.nn.Module):
+
+    def __init__(self, **arg):
+        pass
 
