@@ -6,7 +6,7 @@ https://github.com/mhpi/hydroDL
 
 If you find our code to be useful, please cite the following papers:
 
-Feng, DP., Lawson, K., and CP. Shen, Mitigating prediction error of deep learning streamflow models in large data-sparse regions with ensemble modeling and soft data, Geophysical Research Letters (2021, Accepted) arXiv preprint https://arxiv.org/abs/2011.13380
+Feng, DP., Lawson, K., and CP. Shen, Mitigating prediction error of deep learning streamflow models in large data-sparse regions with ensemble modeling and soft data, Geophysical Research Letters (2021), https://doi.org/10.1029/2021GL092999
 
 Feng, DP, K. Fang and CP. Shen, Enhancing streamflow forecast and extracting insights using continental-scale long-short term memory networks with data integration, Water Resources Research (2020), https://doi.org/10.1029/2019WR026793
 
@@ -43,7 +43,7 @@ Feng et al. (2020). [Enhancing streamflow forecast and extracting insights using
 The dataset used is also NCAR CAMELS. Follow the instructions in the first example above to download and unzip the dataset. Use [this code](example/PUR/testPUR-Reg.py) to test your saved models after training finished.
 
 Related papers:  
-Feng et al. (2021, Accepted). Mitigating prediction error of deep learning streamflow models in large data-sparse regions with ensemble modeling and soft data. Geophysical Research Letters.  
+Feng et al. (2021). [Mitigating prediction error of deep learning streamflow models in large data-sparse regions with ensemble modeling and soft data](https://doi.org/10.1029/2021GL092999). Geophysical Research Letters.  
 Feng et al. (2020). [Enhancing streamflow forecast and extracting insights using long‐short term memory networks with data integration at continental scales](https://doi.org/10.1029/2019WR026793). Water Resources Research.
 
 ## [3.Train a LSTM model to learn SMAP soil moisture](example/demo-LSTM-Tutorial.ipynb)
