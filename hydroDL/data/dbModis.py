@@ -2,7 +2,7 @@
 
 import os
 import numpy as np
-from osgeo import gdal
+# from osgeo import gdal # not used TBC
 import psycopg2
 import subprocess
 from datetime import datetime as dt
