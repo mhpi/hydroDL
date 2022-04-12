@@ -22,7 +22,7 @@ pip install hydroDL
 ### 3) Source latest version
 Install our latest hydroDL package from github
 ```
-pip install git+https://https://github.com/mhpi/hydroDL
+pip install git+https://github.com/mhpi/hydroDL
 ```
 
 _Note:_

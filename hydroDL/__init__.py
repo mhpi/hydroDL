@@ -3,9 +3,9 @@ import socket
 import collections
 
 print("loading package hydroDL")
-import hydroDL.model
-import hydroDL.data
-import hydroDL.post
+# import hydroDL.model
+# import hydroDL.data
+# import hydroDL.post
 
 
 def initPath():
@@ -52,3 +52,4 @@ from . import utils
 # from . import datasets
 from . import model
 from . import post
+from . import data

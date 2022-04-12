@@ -24,7 +24,7 @@ setup(
     version="0.1.0",
     description="Hydrological Deep Learning",
     long_description=long_description,
-    long_description_content_type="text/x-rst",
+    long_description_content_type="text/markdown",
     author="MHPI",
     author_email="cshen@engr.psu.edu",
     python_requires=required_python,
