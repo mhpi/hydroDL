@@ -97,7 +97,7 @@ Fang et al. (2017), [Prolongation of SMAP to Spatio-temporally Seamless Coverage
 Related papers:  
 Fang et al. (2020). [Evaluating the potential and challenges of an uncertainty quantification method for long short-term memory models for soil moisture predictions](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020WR028095), Water Resources Research.
 
-## [5.Training a multi-scale model](example/tutorial_multiscale.py)
+## [5.Training a multi-scale model](example/multiscale.py)
 How to use: [click here](example/multiscale/README.md)
 
 Related papers:  
