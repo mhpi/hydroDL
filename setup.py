@@ -21,7 +21,7 @@ except FileNotFoundError:
 
 setup(
     name="hydroDL",
-    version="0.1",
+    version="0.1.0",
     description="Hydrological Deep Learning",
     long_description=long_description,
     long_description_content_type="text/x-rst",
