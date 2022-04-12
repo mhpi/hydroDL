@@ -9,12 +9,10 @@ from hydroDL.model.rnn import CudnnLstmModel as LSTM
 from hydroDL.model.rnn import CpuLstmModel as LSTM_CPU
 from hydroDL.model.train_multi import trainModel, testModel
 
-root_DB = "./multiscale/coarse_resolution"  # location of fine-resolution datasets
-root_fine = "./multiscale/fine_resolution"  # location of coarse-resolution datasets
-root_site = "./multiscale/insitu"  # location of in-situ datasets
-root_DB = "/data/jxl6499/local/hydroDL_zenodo/example/multiscale/coarse_resolution"  # location of fine-resolution datasets
-root_fine = "/data/jxl6499/local/hydroDL_zenodo/example/multiscale/fine_resolution"  # location of coarse-resolution datasets
-root_site = "/data/jxl6499/local/hydroDL_zenodo/example/multiscale/insitu"  # location of in-situ datasets
+root_DB = "./hydroDL_zenodo/example/multiscale/coarse_resolution"  # location of fine-resolution datasets
+root_fine = "./hydroDL_zenodo/example/multiscale/fine_resolution"  # location of coarse-resolution datasets
+root_site = "./hydroDL_zenodo/example/multiscale/insitu"  # location of in-situ datasets
+
 all_csv_range = ["2016-01-01", "2019-12-31"]  # date for all datasets in the folder
 train_range = ["2016-01-01", "2018-12-31"]  # date for training period
 var_time_series = ["APCP", "TMP", "DLWRF", "DSWRF", "SPFH", "PRES"]  # forcing datasets
