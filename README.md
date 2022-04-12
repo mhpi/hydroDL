@@ -1,6 +1,6 @@
 This code contains deep learning code used to model hydrologic systems from soil moisture to streamflow or from projection to forecast. 
 
-[![PyPI](https://img.shields.io/badge/pypi-version%200.1-blue)]()  [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3993880.svg)](https://doi.org/10.5281/zenodo.3993880) [![CodeStyle](https://img.shields.io/badge/code%20style-Black-black)]()
+[![PyPI](https://img.shields.io/badge/pypi-version%200.1-blue)](https://pypi.org/project/hydroDL/0.1.0/)  [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3993880.svg)](https://doi.org/10.5281/zenodo.3993880) [![CodeStyle](https://img.shields.io/badge/code%20style-Black-black)]()
 
 
 # Installation
