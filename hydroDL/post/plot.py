@@ -2,34 +2,39 @@ import numpy as np
 import scipy
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
-from matplotlib.collections import PatchCollection
-from matplotlib.patches import Rectangle
+
+# from matplotlib.collections import PatchCollection
+# from matplotlib.patches import Rectangle
 import matplotlib.gridspec as gridspec
 from hydroDL import utils
 import string
 
 import os
-# os.environ[
-#     'PROJ_LIB'] = r'/opt/anaconda/pkgs/proj4-5.2.0-he6710b0_1/share/proj/'
+
+
+os.environ['PROJ_LIB'] = r'/opt/anaconda/pkgs/proj4-5.2.0-he6710b0_1/share/proj/'
 from mpl_toolkits import basemap
 
 
-def plotBoxFig(data,
-               label1=None,
-               label2=None,
-               colorLst='rbkgcmywrbkgcmyw',
-               title=None,
-               figsize=(10, 8),
-               sharey=True,
-               xticklabel=None,
-               axin=None,
-               ylim=None,
-               ylabel=None,
-               widths=0.5,
-               ):
+def plotBoxFig(
+    data,
+    label1=None,
+    label2=None,
+    colorLst="rbkgcmywrbkgcmyw",
+    title=None,
+    figsize=(10, 8),
+    sharey=True,
+    xticklabel=None,
+    axin=None,
+    ylim=None,
+    ylabel=None,
+    widths=0.5,
+):
     nc = len(data)
     if axin is None:
-        fig, axes = plt.subplots(ncols=nc, sharey=sharey, figsize=figsize, constrained_layout=True)
+        fig, axes = plt.subplots(
+            ncols=nc, sharey=sharey, figsize=figsize, constrained_layout=True
+        )
     else:
         axes = axin
 
@@ -46,9 +51,11 @@ def plotBoxFig(data,
                     temp[kk] = []
         else:
             temp = temp[~np.isnan(temp)]
-        bp = ax.boxplot(temp, patch_artist=True, notch=True, showfliers=False, widths = widths)
-        for kk in range(0, len(bp['boxes'])):
-            plt.setp(bp['boxes'][kk], facecolor=colorLst[kk])
+        bp = ax.boxplot(
+            temp, patch_artist=True, notch=True, showfliers=False, widths=widths
+        )
+        for kk in range(0, len(bp["boxes"])):
+            plt.setp(bp["boxes"][kk], facecolor=colorLst[kk])
 
         if label1 is not None:
             ax.set_xlabel(label1[k])
@@ -57,7 +64,7 @@ def plotBoxFig(data,
         if xticklabel is None:
             ax.set_xticks([])
         else:
-            ax.set_xticks([y+1 for y in range(0,len(data[k]),2)])
+            ax.set_xticks([y + 1 for y in range(0, len(data[k]), 2)])
             ax.set_xticklabels(xticklabel)
         # ax.ticklabel_format(axis='y', style='sci')
         if ylabel is not None:
@@ -72,9 +79,16 @@ def plotBoxFig(data,
             ax.set_ylim(ylim)
     if label2 is not None:
         if nc == 1:
-            ax.legend(bp['boxes'], label2, loc='lower center', frameon=False, ncol=2)
+            ax.legend(bp["boxes"], label2, loc="lower center", frameon=False, ncol=2)
         else:
-            axes[-1].legend(bp['boxes'], label2, loc='lower center', frameon=False, ncol=2, fontsize=12)
+            axes[-1].legend(
+                bp["boxes"],
+                label2,
+                loc="lower center",
+                frameon=False,
+                ncol=2,
+                fontsize=12,
+            )
     if title is not None:
         # fig.suptitle(title)
         ax.set_title(title)
@@ -84,36 +98,43 @@ def plotBoxFig(data,
         return ax, bp
 
 
-def plotBoxF(data,
-               label1=None,
-               label2=None,
-               colorLst='rbkgcmy',
-               title=None,
-               figsize=(10, 8),
-               sharey=True,
-               xticklabel=None,
-               ylabel=None,
-               subtitles=None
-               ):
+def plotBoxF(
+    data,
+    label1=None,
+    label2=None,
+    colorLst="rbkgcmy",
+    title=None,
+    figsize=(10, 8),
+    sharey=True,
+    xticklabel=None,
+    ylabel=None,
+    subtitles=None,
+):
     nc = len(data)
-    fig, axes = plt.subplots(nrows=3, ncols=2, sharey=sharey, figsize=figsize, constrained_layout=True)
+    fig, axes = plt.subplots(
+        nrows=3, ncols=2, sharey=sharey, figsize=figsize, constrained_layout=True
+    )
     axes = axes.flat
     for k in range(0, nc):
         ax = axes[k] if nc > 1 else axes
         # ax = axes[k]
-        bp = ax.boxplot(
-            data[k], patch_artist=True, notch=True, showfliers=False)
-        for kk in range(0, len(bp['boxes'])):
-            plt.setp(bp['boxes'][kk], facecolor=colorLst[0])
+        bp = ax.boxplot(data[k], patch_artist=True, notch=True, showfliers=False)
+        for kk in range(0, len(bp["boxes"])):
+            plt.setp(bp["boxes"][kk], facecolor=colorLst[0])
         if k == 2:
             yrange = ax.get_ylim()
         if k == 3:
             ax.set(ylim=yrange)
-        ax.axvline(len(data[k])-3+0.5, ymin=0, ymax=1, color='k',
-                   linestyle='dashed', linewidth=1)
-        if ylabel[k] not in ['NSE', 'Corr', 'RMSE', 'KGE']:
-            ax.axhline(0, xmin=0, xmax=1,color='k',
-                       linestyle='dashed', linewidth=1)
+        ax.axvline(
+            len(data[k]) - 3 + 0.5,
+            ymin=0,
+            ymax=1,
+            color="k",
+            linestyle="dashed",
+            linewidth=1,
+        )
+        if ylabel[k] not in ["NSE", "Corr", "RMSE", "KGE"]:
+            ax.axhline(0, xmin=0, xmax=1, color="k", linestyle="dashed", linewidth=1)
 
         if label1 is not None:
             ax.set_xlabel(label1[k])
@@ -122,47 +143,59 @@ def plotBoxF(data,
         if xticklabel is None:
             ax.set_xticks([])
         else:
-            ax.set_xticks([y+1 for y in range(0,len(data[k]))])
+            ax.set_xticks([y + 1 for y in range(0, len(data[k]))])
             ax.set_xticklabels(xticklabel)
         if subtitles is not None:
-            ax.set_title(subtitles[k], loc='left')
+            ax.set_title(subtitles[k], loc="left")
         # ax.ticklabel_format(axis='y', style='sci')
     if label2 is not None:
         if nc == 1:
-            ax.legend(bp['boxes'], label2, loc='best', frameon=False, ncol=2)
+            ax.legend(bp["boxes"], label2, loc="best", frameon=False, ncol=2)
         else:
-            axes[-1].legend(bp['boxes'], label2, loc='best', frameon=False, ncol=2, fontsize=12)
+            axes[-1].legend(
+                bp["boxes"], label2, loc="best", frameon=False, ncol=2, fontsize=12
+            )
     if title is not None:
         fig.suptitle(title)
     return fig
 
-def plotMultiBoxFig(data,
-               *,
-               axes=None,
-               label1=None,
-               label2=None,
-               colorLst='grbkcmy',
-               title=None,
-               figsize=(10, 8),
-               sharey=True,
-               xticklabel=None,
-               position=None,
-               ylabel=None,
-               ylim = None,
-               ):
+
+def plotMultiBoxFig(
+    data,
+    *,
+    axes=None,
+    label1=None,
+    label2=None,
+    colorLst="grbkcmy",
+    title=None,
+    figsize=(10, 8),
+    sharey=True,
+    xticklabel=None,
+    position=None,
+    ylabel=None,
+    ylim=None,
+):
     nc = len(data)
     if axes is None:
-        fig, axes = plt.subplots(ncols=nc, sharey=sharey, figsize=figsize, constrained_layout=True)
+        fig, axes = plt.subplots(
+            ncols=nc, sharey=sharey, figsize=figsize, constrained_layout=True
+        )
     nv = len(data[0])
-    ndays = len(data[0][1])-1
+    ndays = len(data[0][1]) - 1
     for k in range(0, nc):
         ax = axes[k] if nc > 1 else axes
-        bp = [None]*nv
+        bp = [None] * nv
         for ii in range(nv):
             bp[ii] = ax.boxplot(
-            data[k][ii], patch_artist=True, notch=True, showfliers=False, positions=position[ii], widths=0.2)
-            for kk in range(0, len(bp[ii]['boxes'])):
-                plt.setp(bp[ii]['boxes'][kk], facecolor=colorLst[ii])
+                data[k][ii],
+                patch_artist=True,
+                notch=True,
+                showfliers=False,
+                positions=position[ii],
+                widths=0.2,
+            )
+            for kk in range(0, len(bp[ii]["boxes"])):
+                plt.setp(bp[ii]["boxes"][kk], facecolor=colorLst[ii])
 
         if label1 is not None:
             ax.set_xlabel(label1[k])
@@ -173,7 +206,7 @@ def plotMultiBoxFig(data,
         if xticklabel is None:
             ax.set_xticks([])
         else:
-            ax.set_xticks([-0.7]+[y for y in range(0,len(data[k][1])+1)])
+            ax.set_xticks([-0.7] + [y for y in range(0, len(data[k][1]) + 1)])
             # ax.set_xticks([y for y in range(0, len(data[k][1]) + 1)])
             # xtickloc = [0.25, 0.75] + np.arange(1.625, 5, 1.25).tolist() + [5.5, 5.5+0.25*6]
             # ax.set_xticks([y for y in xtickloc])
@@ -185,27 +218,30 @@ def plotMultiBoxFig(data,
         # vlabel = [0.5] + np.arange(1.0, 5, 1.25).tolist() + [4.75+0.25*6, 4.75+0.25*12]
         vlabel = np.arange(-0.5, len(data[k][1]) + 1)
         for xv in vlabel:
-            ax.axvline(xv, ymin=0, ymax=1, color='k',
-                       linestyle='dashed', linewidth=1)
+            ax.axvline(xv, ymin=0, ymax=1, color="k", linestyle="dashed", linewidth=1)
         yh0 = np.nanmedian(data[k][0][0])
-        ax.axhline(yh0, xmin=0, xmax=1, color='grey',
-                   linestyle='dashed', linewidth=2)
+        ax.axhline(yh0, xmin=0, xmax=1, color="grey", linestyle="dashed", linewidth=2)
         yh = np.nanmedian(data[k][0][1])
-        ax.axhline(yh, xmin=0, xmax=1, color='r',
-                   linestyle='dashed', linewidth=2)
+        ax.axhline(yh, xmin=0, xmax=1, color="r", linestyle="dashed", linewidth=2)
         yh1 = np.nanmedian(data[k][1][0])
-        ax.axhline(yh1, xmin=0, xmax=1, color='b',
-                   linestyle='dashed', linewidth=2)
+        ax.axhline(yh1, xmin=0, xmax=1, color="b", linestyle="dashed", linewidth=2)
         if ylim is not None:
             ax.set_ylim(ylim)
     labelhandle = list()
     for ii in range(nv):
-        labelhandle.append(bp[ii]['boxes'][0])
+        labelhandle.append(bp[ii]["boxes"][0])
     if label2 is not None:
         if nc == 1:
-            ax.legend(labelhandle, label2, loc='lower center', frameon=False, ncol=2)
+            ax.legend(labelhandle, label2, loc="lower center", frameon=False, ncol=2)
         else:
-            axes[-1].legend(labelhandle, label2, loc='lower center', frameon=False, ncol=1, fontsize=12)
+            axes[-1].legend(
+                labelhandle,
+                label2,
+                loc="lower center",
+                frameon=False,
+                ncol=1,
+                fontsize=12,
+            )
     if title is not None:
         # fig.suptitle(title)
         ax.set_title(title)
@@ -215,19 +251,21 @@ def plotMultiBoxFig(data,
         return ax, labelhandle
 
 
-def plotTS(t,
-           y,
-           *,
-           ax=None,
-           tBar=None,
-           figsize=(12, 4),
-           cLst='rbkgcmy',
-           markerLst=None,
-           linespec=None,
-           legLst=None,
-           title=None,
-           linewidth=2,
-           ylabel=None):
+def plotTS(
+    t,
+    y,
+    *,
+    ax=None,
+    tBar=None,
+    figsize=(12, 4),
+    cLst="rbkgcmy",
+    markerLst=None,
+    linespec=None,
+    legLst=None,
+    title=None,
+    linewidth=2,
+    ylabel=None,
+):
     newFig = False
     if ax is None:
         fig = plt.figure(figsize=figsize)
@@ -244,19 +282,24 @@ def plotTS(t,
             legStr = legLst[k]
         if markerLst is None:
             if True in np.isnan(yy):
-                ax.plot(tt, yy, '*', color=cLst[k], label=legStr)
+                ax.plot(tt, yy, "*", color=cLst[k], label=legStr)
             else:
-                ax.plot(
-                    tt, yy, color=cLst[k], label=legStr, linewidth=linewidth)
+                ax.plot(tt, yy, color=cLst[k], label=legStr, linewidth=linewidth)
         else:
-            if markerLst[k] is '-':
+            if markerLst[k] is "-":
                 if linespec is not None:
-                    ax.plot(tt, yy, color=cLst[k], label=legStr, linestyle=linespec[k], lw=1.5)
+                    ax.plot(
+                        tt,
+                        yy,
+                        color=cLst[k],
+                        label=legStr,
+                        linestyle=linespec[k],
+                        lw=1.5,
+                    )
                 else:
                     ax.plot(tt, yy, color=cLst[k], label=legStr, lw=1.5)
             else:
-                ax.plot(
-                    tt, yy, color=cLst[k], label=legStr, marker=markerLst[k])
+                ax.plot(tt, yy, color=cLst[k], label=legStr, marker=markerLst[k])
         if ylabel is not None:
             ax.set_ylabel(ylabel)
         # ax.set_xlim([np.min(tt), np.max(tt)])
@@ -264,29 +307,31 @@ def plotTS(t,
         ylim = ax.get_ylim()
         tBar = [tBar] if type(tBar) is not list else tBar
         for tt in tBar:
-            ax.plot([tt, tt], ylim, '-k')
+            ax.plot([tt, tt], ylim, "-k")
 
     if legLst is not None:
-        ax.legend(loc='upper right', frameon=False)
+        ax.legend(loc="upper right", frameon=False)
     if title is not None:
-        ax.set_title(title, loc='center')
+        ax.set_title(title, loc="center")
     if newFig is True:
         return fig, ax
     else:
         return ax
 
 
-def plotVS(x,
-           y,
-           *,
-           ax=None,
-           title=None,
-           xlabel=None,
-           ylabel=None,
-           titleCorr=True,
-           plot121=True,
-           doRank=False,
-           figsize=(8, 6)):
+def plotVS(
+    x,
+    y,
+    *,
+    ax=None,
+    title=None,
+    xlabel=None,
+    ylabel=None,
+    titleCorr=True,
+    plot121=True,
+    doRank=False,
+    figsize=(8, 6),
+):
     if doRank is True:
         x = scipy.stats.rankdata(x)
         y = scipy.stats.rankdata(y)
@@ -302,42 +347,45 @@ def plotVS(x,
         fig = None
     if title is not None:
         if titleCorr is True:
-            title = title + ' ' + r'$\rho$={:.2f}'.format(corr)
+            title = title + " " + r"$\rho$={:.2f}".format(corr)
         ax.set_title(title)
     else:
         if titleCorr is True:
-            ax.set_title(r'$\rho$=' + '{:.2f}'.format(corr))
+            ax.set_title(r"$\rho$=" + "{:.2f}".format(corr))
     if xlabel is not None:
         ax.set_xlabel(xlabel)
     if ylabel is not None:
         ax.set_ylabel(ylabel)
     # corr = np.corrcoef(x, y)[0, 1]
-    ax.plot(x, y, 'b.')
-    ax.plot(xLr, yLr, 'r-')
+    ax.plot(x, y, "b.")
+    ax.plot(xLr, yLr, "r-")
 
     if plot121 is True:
         plot121Line(ax)
 
     return fig, ax
 
-def plotxyVS(x,
-           y,
-           *,
-           ax=None,
-           title=None,
-           xlabel=None,
-           ylabel=None,
-           titleCorr=True,
-           plot121=True,
-           plotReg=False,
-           corrType='Pearson',
-           figsize=(8, 6),
-           markerType = 'ob'):
-    if corrType is 'Pearson':
+
+def plotxyVS(
+    x,
+    y,
+    *,
+    ax=None,
+    title=None,
+    xlabel=None,
+    ylabel=None,
+    titleCorr=True,
+    plot121=True,
+    plotReg=False,
+    corrType="Pearson",
+    figsize=(8, 6),
+    markerType="ob",
+):
+    if corrType is "Pearson":
         corr = scipy.stats.pearsonr(x, y)[0]
-    elif corrType is 'Spearman':
+    elif corrType is "Spearman":
         corr = scipy.stats.spearmanr(x, y)[0]
-    rmse = np.sqrt(np.nanmean((x - y)**2))
+    rmse = np.sqrt(np.nanmean((x - y) ** 2))
     pLr = np.polyfit(x, y, 1)
     xLr = np.array([np.min(x), np.max(x)])
     yLr = np.poly1d(pLr)(xLr)
@@ -349,23 +397,31 @@ def plotxyVS(x,
         fig = None
     if title is not None:
         if titleCorr is True:
-            title = title + ' ' + r'$\rho$={:.2f}'.format(corr) + ' ' + r'$RMSE$={:.3f}'.format(rmse)
+            title = (
+                title
+                + " "
+                + r"$\rho$={:.2f}".format(corr)
+                + " "
+                + r"$RMSE$={:.3f}".format(rmse)
+            )
         ax.set_title(title)
     else:
         if titleCorr is True:
-            ax.set_title(r'$\rho$=' + '{:.2f}'.format(corr)) + ' ' + r'$RMSE$={:.3f}'.format(rmse)
+            ax.set_title(
+                r"$\rho$=" + "{:.2f}".format(corr)
+            ) + " " + r"$RMSE$={:.3f}".format(rmse)
     if xlabel is not None:
         ax.set_xlabel(xlabel)
     if ylabel is not None:
         ax.set_ylabel(ylabel)
-    ax.plot(x, y, markerType, markerfacecolor='none')
+    ax.plot(x, y, markerType, markerfacecolor="none")
     # ax.set_xlim(min(np.min(x), np.min(y))-0.1, max(np.max(x), np.max(y))+0.1)
     # ax.set_ylim(min(np.min(x), np.min(y))-0.1, max(np.max(x), np.max(y))+0.1)
     ax.set_xlim(np.min(x), np.max(x))
     ax.set_ylim(np.min(x), np.max(x))
     if plotReg is True:
-        ax.plot(xLr, yLr, 'r-')
-    ax.set_aspect('equal', 'box')
+        ax.plot(xLr, yLr, "r-")
+    ax.set_aspect("equal", "box")
     if plot121 is True:
         plot121Line(ax)
         # xyline = np.linspace(*ax.get_xlim())
@@ -373,7 +429,8 @@ def plotxyVS(x,
 
     return fig, ax
 
-def plot121Line(ax, spec='k-'):
+
+def plot121Line(ax, spec="k-"):
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
     vmin = np.min([xlim[0], ylim[0]])
@@ -381,21 +438,23 @@ def plot121Line(ax, spec='k-'):
     ax.plot([vmin, vmax], [vmin, vmax], spec)
 
 
-def plotMap(data,
-            *,
-            ax=None,
-            lat=None,
-            lon=None,
-            title=None,
-            cRange=None,
-            shape=None,
-            pts=None,
-            figsize=(8, 4),
-            clbar=True,
-            cRangeint=False,
-            cmap=plt.cm.jet,
-            bounding=None,
-            prj='cyl'):
+def plotMap(
+    data,
+    *,
+    ax=None,
+    lat=None,
+    lon=None,
+    title=None,
+    cRange=None,
+    shape=None,
+    pts=None,
+    figsize=(8, 4),
+    clbar=True,
+    cRangeint=False,
+    cmap=plt.cm.jet,
+    bounding=None,
+    prj="cyl",
+):
 
     if cRange is not None:
         vmin = cRange[0]
@@ -415,8 +474,12 @@ def plotMap(data,
     else:
         isGrid = True
     if bounding is None:
-        bounding = [np.min(lat)-0.5, np.max(lat)+0.5,
-                    np.min(lon)-0.5,np.max(lon)+0.5]
+        bounding = [
+            np.min(lat) - 0.5,
+            np.max(lat) + 0.5,
+            np.min(lon) - 0.5,
+            np.max(lon) + 0.5,
+        ]
 
     mm = basemap.Basemap(
         llcrnrlat=bounding[0],
@@ -424,11 +487,12 @@ def plotMap(data,
         llcrnrlon=bounding[2],
         urcrnrlon=bounding[3],
         projection=prj,
-        resolution='c',
-        ax=ax)
+        resolution="c",
+        ax=ax,
+    )
     mm.drawcoastlines()
-    mm.drawstates(linestyle='dashed')
-    mm.drawcountries(linewidth=1.0, linestyle='-.')
+    mm.drawstates(linestyle="dashed")
+    mm.drawcountries(linewidth=1.0, linestyle="-.")
     x, y = mm(lon, lat)
     if isGrid is True:
         xx, yy = np.meshgrid(x, y)
@@ -440,32 +504,27 @@ def plotMap(data,
         #     vmax=vmax,
         #     extent=[x[0], x[-1], y[0], y[-1]])
     else:
-        cs = mm.scatter(
-            x, y, c=data, s=30, cmap=cmap, vmin=vmin, vmax=vmax)
+        cs = mm.scatter(x, y, c=data, s=30, cmap=cmap, vmin=vmin, vmax=vmax)
 
     if shape is not None:
         crd = np.array(shape.points)
         par = shape.parts
         if len(par) > 1:
             for k in range(0, len(par) - 1):
-                x = crd[par[k]:par[k + 1], 0]
-                y = crd[par[k]:par[k + 1], 1]
-                mm.plot(x, y, color='r', linewidth=3)
+                x = crd[par[k] : par[k + 1], 0]
+                y = crd[par[k] : par[k + 1], 1]
+                mm.plot(x, y, color="r", linewidth=3)
         else:
             y = crd[:, 0]
             x = crd[:, 1]
-            mm.plot(x, y, color='r', linewidth=3)
+            mm.plot(x, y, color="r", linewidth=3)
     if pts is not None:
-        mm.plot(pts[1], pts[0], 'k*', markersize=4)
+        mm.plot(pts[1], pts[0], "k*", markersize=4)
         npt = len(pts[0])
         for k in range(npt):
-            plt.text(
-                pts[1][k],
-                pts[0][k],
-                string.ascii_uppercase[k],
-                fontsize=18)
+            plt.text(pts[1][k], pts[0][k], string.ascii_uppercase[k], fontsize=18)
     if clbar is True:
-        mm.colorbar(cs, pad='5%', location='bottom')
+        mm.colorbar(cs, pad="5%", location="bottom")
     if title is not None:
         ax.set_title(title)
     if ax is None:
@@ -475,71 +534,68 @@ def plotMap(data,
 
 
 def plotlocmap(
-            lat,
-            lon,
-            ax=None,
-            baclat=None,
-            baclon=None,
-            title=None,
-            shape=None,
-            txtlabel=None):
+    lat, lon, ax=None, baclat=None, baclon=None, title=None, shape=None, txtlabel=None
+):
     if ax is None:
         fig = plt.figure(figsize=(8, 4))
         ax = fig.subplots()
     mm = basemap.Basemap(
-        llcrnrlat=min(np.min(baclat),np.min(lat))-2.0,
-        urcrnrlat=max(np.max(baclat),np.max(lat))+2.0,
-        llcrnrlon=min(np.min(baclon),np.min(lon))-1.0,
-        urcrnrlon=max(np.max(baclon),np.max(lon))+1.0,
-        projection='cyl',
-        resolution='c',
-        ax=ax)
+        llcrnrlat=min(np.min(baclat), np.min(lat)) - 2.0,
+        urcrnrlat=max(np.max(baclat), np.max(lat)) + 2.0,
+        llcrnrlon=min(np.min(baclon), np.min(lon)) - 1.0,
+        urcrnrlon=max(np.max(baclon), np.max(lon)) + 1.0,
+        projection="cyl",
+        resolution="c",
+        ax=ax,
+    )
     mm.drawcoastlines()
-    mm.drawstates(linestyle='dashed')
-    mm.drawcountries(linewidth=1.0, linestyle='-.')
+    mm.drawstates(linestyle="dashed")
+    mm.drawcountries(linewidth=1.0, linestyle="-.")
     # x, y = mm(baclon, baclat)
     # bs = mm.scatter(
     #     x, y, c='k', s=30)
     x, y = mm(lon, lat)
-    ax.plot(x, y, 'k*', markersize=12)
+    ax.plot(x, y, "k*", markersize=12)
     if shape is not None:
         crd = np.array(shape.points)
         par = shape.parts
         if len(par) > 1:
             for k in range(0, len(par) - 1):
-                x = crd[par[k]:par[k + 1], 0]
-                y = crd[par[k]:par[k + 1], 1]
-                mm.plot(x, y, color='r', linewidth=3)
+                x = crd[par[k] : par[k + 1], 0]
+                y = crd[par[k] : par[k + 1], 1]
+                mm.plot(x, y, color="r", linewidth=3)
         else:
             y = crd[:, 0]
             x = crd[:, 1]
-            mm.plot(x, y, color='r', linewidth=3)
+            mm.plot(x, y, color="r", linewidth=3)
     if title is not None:
-        ax.set_title(title, loc='center')
+        ax.set_title(title, loc="center")
     if txtlabel is not None:
         for ii in range(len(lat)):
             txt = txtlabel[ii]
             xy = (x[ii], y[ii])
-            xy = (x[ii]+1.0, y[ii]-1.5)
-            ax.annotate(txt, xy, fontsize=18, fontweight='bold')
+            xy = (x[ii] + 1.0, y[ii] - 1.5)
+            ax.annotate(txt, xy, fontsize=18, fontweight="bold")
         if ax is None:
             return fig, ax, mm
         else:
             return mm
 
 
-def plotPUBloc(data,
-            *,
-            ax=None,
-            lat=None,
-            lon=None,
-            baclat=None,
-            baclon=None,
-            title=None,
-            cRange=None,
-            cRangeint=False,
-            shape=None,
-            isGrid=False):
+def plotPUBloc(
+    data,
+    *,
+    ax=None,
+    lat=None,
+    lon=None,
+    baclat=None,
+    baclon=None,
+    title=None,
+    cRange=None,
+    cRangeint=False,
+    shape=None,
+    isGrid=False,
+):
     if cRange is not None:
         vmin = cRange[0]
         vmax = cRange[1]
@@ -560,39 +616,40 @@ def plotPUBloc(data,
     #     isGrid = True
 
     mm = basemap.Basemap(
-        llcrnrlat=min(np.min(baclat),np.min(lat))-0.5,
-        urcrnrlat=max(np.max(baclat),np.max(lat))+0.5,
-        llcrnrlon=min(np.min(baclon),np.min(lon))-0.5,
-        urcrnrlon=max(np.max(baclon),np.max(lon))+0.5,
-        projection='cyl',
-        resolution='c',
-        ax=ax)
+        llcrnrlat=min(np.min(baclat), np.min(lat)) - 0.5,
+        urcrnrlat=max(np.max(baclat), np.max(lat)) + 0.5,
+        llcrnrlon=min(np.min(baclon), np.min(lon)) - 0.5,
+        urcrnrlon=max(np.max(baclon), np.max(lon)) + 0.5,
+        projection="cyl",
+        resolution="c",
+        ax=ax,
+    )
     mm.drawcoastlines()
-    mm.drawstates(linestyle='dashed')
-    mm.drawcountries(linewidth=0.5, linestyle='-.')
+    mm.drawstates(linestyle="dashed")
+    mm.drawcountries(linewidth=0.5, linestyle="-.")
     x, y = mm(baclon, baclat)
-    bs = mm.scatter(
-        x, y, c='k', s=30)
+    bs = mm.scatter(x, y, c="k", s=30)
     x, y = mm(lon, lat)
     if isGrid is True:
         xx, yy = np.meshgrid(x, y)
         cs = mm.pcolormesh(xx, yy, data, cmap=plt.cm.jet, vmin=vmin, vmax=vmax)
     else:
         cs = mm.scatter(
-            x, y, c=data, s=100, cmap=plt.cm.jet, vmin=vmin, vmax=vmax, marker='*')
+            x, y, c=data, s=100, cmap=plt.cm.jet, vmin=vmin, vmax=vmax, marker="*"
+        )
 
     if shape is not None:
         crd = np.array(shape.points)
         par = shape.parts
         if len(par) > 1:
             for k in range(0, len(par) - 1):
-                x = crd[par[k]:par[k + 1], 0]
-                y = crd[par[k]:par[k + 1], 1]
-                mm.plot(x, y, color='r', linewidth=3)
+                x = crd[par[k] : par[k + 1], 0]
+                y = crd[par[k] : par[k + 1], 1]
+                mm.plot(x, y, color="r", linewidth=3)
         else:
             y = crd[:, 0]
             x = crd[:, 1]
-            mm.plot(x, y, color='r', linewidth=3)
+            mm.plot(x, y, color="r", linewidth=3)
     # mm.colorbar(cs, location='bottom', pad='5%')
     if title is not None:
         ax.set_title(title)
@@ -601,24 +658,27 @@ def plotPUBloc(data,
         else:
             return mm
 
-def plotTsMap(dataMap,
-              dataTs,
-              *,
-              lat,
-              lon,
-              t,
-              dataTs2=None,
-              tBar=None,
-              mapColor=None,
-              tsColor='krbg',
-              tsColor2='cmy',
-              mapNameLst=None,
-              tsNameLst=None,
-              tsNameLst2=None,
-              figsize=[12, 6],
-              isGrid=False,
-              multiTS=False,
-              linewidth=1):
+
+def plotTsMap(
+    dataMap,
+    dataTs,
+    *,
+    lat,
+    lon,
+    t,
+    dataTs2=None,
+    tBar=None,
+    mapColor=None,
+    tsColor="krbg",
+    tsColor2="cmy",
+    mapNameLst=None,
+    tsNameLst=None,
+    tsNameLst2=None,
+    figsize=[12, 6],
+    isGrid=False,
+    multiTS=False,
+    linewidth=1,
+):
     if type(dataMap) is np.ndarray:
         dataMap = [dataMap]
     if type(dataTs) is np.ndarray:
@@ -665,14 +725,14 @@ def plotTsMap(dataMap,
     def onclick(event):
         xClick = event.xdata
         yClick = event.ydata
-        d = np.sqrt((xClick - lon)**2 + (yClick - lat)**2)
+        d = np.sqrt((xClick - lon) ** 2 + (yClick - lat) ** 2)
         ind = np.argmin(d)
         # titleStr = 'pixel %d, lat %.3f, lon %.3f' % (ind, lat[ind], lon[ind])
-#         titleStr = 'gage %d, lat %.3f, lon %.3f' % (ind, lat[ind], lon[ind])
-#         ax.clear()
-#         plotMap(data, lat=lat, lon=lon, ax=ax, cRange=cRange, title=title)
-#         ax.plot(lon[ind], lat[ind], 'k*', markersize=12)
-        titleStr = 'pixel %d, lat %.3f, lon %.3f' % (ind, lat[ind], lon[ind])
+        #         titleStr = 'gage %d, lat %.3f, lon %.3f' % (ind, lat[ind], lon[ind])
+        #         ax.clear()
+        #         plotMap(data, lat=lat, lon=lon, ax=ax, cRange=cRange, title=title)
+        #         ax.plot(lon[ind], lat[ind], 'k*', markersize=12)
+        titleStr = "pixel %d, lat %.3f, lon %.3f" % (ind, lat[ind], lon[ind])
         for ix in range(nAx):
             tsLst = list()
             for temp in dataTs[ix]:
@@ -687,7 +747,8 @@ def plotTsMap(dataMap,
                     title=titleStr,
                     cLst=tsColor,
                     linewidth=linewidth,
-                    tBar=tBar)
+                    tBar=tBar,
+                )
             else:
                 plotTS(
                     t,
@@ -696,7 +757,8 @@ def plotTsMap(dataMap,
                     legLst=tsNameLst,
                     cLst=tsColor,
                     linewidth=linewidth,
-                    tBar=tBar)
+                    tBar=tBar,
+                )
 
             if dataTs2 is not None:
                 tsLst2 = list()
@@ -710,25 +772,29 @@ def plotTsMap(dataMap,
                     legLst=tsNameLst2,
                     cLst=tsColor2,
                     lineWidth=linewidth,
-                    tBar=tBar)
+                    tBar=tBar,
+                )
             if ix != nAx - 1:
                 axTsLst[ix].set_xticklabels([])
         plt.draw()
 
-    fig.canvas.mpl_connect('button_press_event', onclick)
+    fig.canvas.mpl_connect("button_press_event", onclick)
     plt.tight_layout()
     plt.show()
 
-def plotTsMapGage(dataMap,
-              dataTs,
-              *,
-              lat,
-              lon,
-              t,
-              colorMap=None,
-              mapNameLst=None,
-              tsNameLst=None,
-              figsize=[12, 6]):
+
+def plotTsMapGage(
+    dataMap,
+    dataTs,
+    *,
+    lat,
+    lon,
+    t,
+    colorMap=None,
+    mapNameLst=None,
+    tsNameLst=None,
+    figsize=[12, 6],
+):
     if type(dataMap) is np.ndarray:
         dataMap = [dataMap]
     if type(dataTs) is np.ndarray:
@@ -754,13 +820,13 @@ def plotTsMapGage(dataMap,
     def onclick(event):
         xClick = event.xdata
         yClick = event.ydata
-        d = np.sqrt((xClick - lon)**2 + (yClick - lat)**2)
+        d = np.sqrt((xClick - lon) ** 2 + (yClick - lat) ** 2)
         ind = np.argmin(d)
         # titleStr = 'pixel %d, lat %.3f, lon %.3f' % (ind, lat[ind], lon[ind])
-        titleStr = 'gage %d, lat %.3f, lon %.3f' % (ind, lat[ind], lon[ind])
+        titleStr = "gage %d, lat %.3f, lon %.3f" % (ind, lat[ind], lon[ind])
         ax.clear()
         plotMap(data, lat=lat, lon=lon, ax=ax, cRange=cRange, title=title)
-        ax.plot(lon[ind], lat[ind], 'k*', markersize=12)
+        ax.plot(lon[ind], lat[ind], "k*", markersize=12)
         # ax.draw(renderer=None)
         tsLst = list()
         for k in range(nTs):
@@ -769,24 +835,26 @@ def plotTsMapGage(dataMap,
         plotTS(t, tsLst, ax=axTs, legLst=tsNameLst, title=titleStr)
         plt.draw()
 
-    fig.canvas.mpl_connect('button_press_event', onclick)
+    fig.canvas.mpl_connect("button_press_event", onclick)
     plt.tight_layout()
     plt.show()
 
 
-def plotCDF(xLst,
-            *,
-            ax=None,
-            title=None,
-            legendLst=None,
-            figsize=(8, 6),
-            ref='121',
-            cLst=None,
-            xlabel=None,
-            ylabel=None,
-            showDiff='RMSE',
-            xlim=None,
-            linespec=None):
+def plotCDF(
+    xLst,
+    *,
+    ax=None,
+    title=None,
+    legendLst=None,
+    figsize=(8, 6),
+    ref="121",
+    cLst=None,
+    xlabel=None,
+    ylabel=None,
+    showDiff="RMSE",
+    xlim=None,
+    linespec=None,
+):
     if ax is None:
         fig = plt.figure(figsize=figsize)
         ax = fig.subplots()
@@ -798,7 +866,7 @@ def plotCDF(xLst,
         cLst = cmap(np.linspace(0, 1, len(xLst)))
 
     if title is not None:
-        ax.set_title(title, loc='left')
+        ax.set_title(title, loc="left")
     if xlabel is not None:
         ax.set_xlabel(xlabel)
     if ylabel is not None:
@@ -819,46 +887,49 @@ def plotCDF(xLst,
         else:
             legStr = legendLst[k]
         if ref is not None:
-            if ref is '121':
+            if ref is "121":
                 yRef = yRank
-            elif ref is 'norm':
+            elif ref is "norm":
                 yRef = scipy.stats.norm.cdf(xSort, 0, 1)
-            rmse = np.sqrt(((xSort - yRef)**2).mean())
+            rmse = np.sqrt(((xSort - yRef) ** 2).mean())
             ksd = np.max(np.abs(xSort - yRef))
             rmseLst.append(rmse)
             ksdLst.append(ksd)
-            if showDiff is 'RMSE':
-                legStr = legStr + ' RMSE=' + '%.3f' % rmse
-            elif showDiff is 'KS':
-                legStr = legStr + ' KS=' + '%.3f' % ksd
+            if showDiff is "RMSE":
+                legStr = legStr + " RMSE=" + "%.3f" % rmse
+            elif showDiff is "KS":
+                legStr = legStr + " KS=" + "%.3f" % ksd
         ax.plot(xSort, yRank, color=cLst[k], label=legStr, linestyle=linespec[k])
         ax.grid(b=True)
     if xlim is not None:
         ax.set(xlim=xlim)
-    if ref is '121':
-        ax.plot([0, 1], [0, 1], 'k', label='y=x')
-    if ref is 'norm':
+    if ref is "121":
+        ax.plot([0, 1], [0, 1], "k", label="y=x")
+    if ref is "norm":
         xNorm = np.linspace(-5, 5, 1000)
         normCdf = scipy.stats.norm.cdf(xNorm, 0, 1)
-        ax.plot(xNorm, normCdf, 'k', label='Gaussian')
+        ax.plot(xNorm, normCdf, "k", label="Gaussian")
     if legendLst is not None:
-        ax.legend(loc='best', frameon=False)
+        ax.legend(loc="best", frameon=False)
     # out = {'xSortLst': xSortLst, 'rmseLst': rmseLst, 'ksdLst': ksdLst}
     return fig, ax
 
-def plotFDC(xLst,
-            *,
-            ax=None,
-            title=None,
-            legendLst=None,
-            figsize=(8, 6),
-            ref='121',
-            cLst=None,
-            xlabel=None,
-            ylabel=None,
-            showDiff='RMSE',
-            xlim=None,
-            linespec=None):
+
+def plotFDC(
+    xLst,
+    *,
+    ax=None,
+    title=None,
+    legendLst=None,
+    figsize=(8, 6),
+    ref="121",
+    cLst=None,
+    xlabel=None,
+    ylabel=None,
+    showDiff="RMSE",
+    xlim=None,
+    linespec=None,
+):
     if ax is None:
         fig = plt.figure(figsize=figsize)
         ax = fig.subplots()
@@ -870,7 +941,7 @@ def plotFDC(xLst,
         cLst = cmap(np.linspace(0, 1, len(xLst)))
 
     if title is not None:
-        ax.set_title(title, loc='center')
+        ax.set_title(title, loc="center")
     if xlabel is not None:
         ax.set_xlabel(xlabel)
     if ylabel is not None:
@@ -882,37 +953,37 @@ def plotFDC(xLst,
     for k in range(0, len(xLst)):
         x = xLst[k]
         xSort = flatData(x, sortOpt=1)
-        yRank = np.arange(1, len(xSort)+1) / float(len(xSort) + 1)*100
+        yRank = np.arange(1, len(xSort) + 1) / float(len(xSort) + 1) * 100
         xSortLst.append(xSort)
         if legendLst is None:
             legStr = None
         else:
             legStr = legendLst[k]
         if ref is not None:
-            if ref is '121':
+            if ref is "121":
                 yRef = yRank
-            elif ref is 'norm':
+            elif ref is "norm":
                 yRef = scipy.stats.norm.cdf(xSort, 0, 1)
-            rmse = np.sqrt(((xSort - yRef)**2).mean())
+            rmse = np.sqrt(((xSort - yRef) ** 2).mean())
             ksd = np.max(np.abs(xSort - yRef))
             rmseLst.append(rmse)
             ksdLst.append(ksd)
-            if showDiff is 'RMSE':
-                legStr = legStr + ' RMSE=' + '%.3f' % rmse
-            elif showDiff is 'KS':
-                legStr = legStr + ' KS=' + '%.3f' % ksd
+            if showDiff is "RMSE":
+                legStr = legStr + " RMSE=" + "%.3f" % rmse
+            elif showDiff is "KS":
+                legStr = legStr + " KS=" + "%.3f" % ksd
         ax.plot(yRank, xSort, color=cLst[k], label=legStr, linestyle=linespec[k])
         ax.grid(b=True)
     if xlim is not None:
         ax.set(xlim=xlim)
-    if ref is '121':
-        ax.plot([0, 1], [0, 1], 'k', label='y=x')
-    if ref is 'norm':
+    if ref is "121":
+        ax.plot([0, 1], [0, 1], "k", label="y=x")
+    if ref is "norm":
         xNorm = np.linspace(-5, 5, 1000)
         normCdf = scipy.stats.norm.cdf(xNorm, 0, 1)
-        ax.plot(xNorm, normCdf, 'k', label='Gaussian')
+        ax.plot(xNorm, normCdf, "k", label="Gaussian")
     if legendLst is not None:
-        ax.legend(loc='best', frameon=False)
+        ax.legend(loc="best", frameon=False)
     # out = {'xSortLst': xSortLst, 'rmseLst': rmseLst, 'ksdLst': ksdLst}
     return fig, ax
 
@@ -928,7 +999,7 @@ def flatData(x, sortOpt=0):
     elif sortOpt == -1:
         xSort = xArray
 
-    return (xSort)
+    return xSort
 
 
 def scaleSigma(s, u, y):
@@ -950,3 +1021,74 @@ def regLinear(y, x):
         X = sm.add_constant(np.column_stack((ele, X)))
     out = sm.OLS(y, X).fit()
     return out
+
+def plotBoxFigMulti(
+               data,
+               label1=None,
+               label2=None,
+               colorLst='rbkgcmy',
+               title=None,
+               figsize=(10, 8),
+               sharey=True,
+               xticklabel=None,
+               path_fig='single_plotbox.jpg',
+               ):
+    '''
+    data: list type [np.array([])]: pix --> date
+    label1: label of each subwindows, e.g. ["Bias","RMSE","ubRMSE","Corr"]
+    label2: label of box, e.g. ["SMAP data"]
+    colorLst: color for each box, e.g. red(default color)
+    title: figure title
+    path_fig: save path
+    '''
+
+    nc = len(data)
+    fig, axes = plt.subplots(ncols=nc, sharey=sharey, figsize=figsize, constrained_layout=True)
+
+    median_dict = {}
+    for k in range(0, nc):
+        ax = axes[k] if nc > 1 else axes
+        temp = data[k]
+        if type(temp) is list:
+            for kk in range(len(temp)):
+                tt = temp[kk]
+                if tt is not None and tt != []:
+                    tt = tt[~np.isnan(tt)]
+                    temp[kk] = tt
+                else:
+                    temp[kk] = []
+        else:
+            temp = temp[~np.isnan(temp)]
+        bp = ax.boxplot(temp, patch_artist=True, notch=True, showfliers=False)
+        medians_int = round(np.median(temp), 4)
+        median_dict[label1[k]] = medians_int
+        # xtick = ax.get_xticks()
+        # ax.text(2,3, str(medians_int),
+        #           horizontalalignment='center',
+        #           # fontsize=9,
+        #           size='large',  # x-small
+        #           color='k',)
+
+        for kk in range(0, len(bp['boxes'])):
+            plt.setp(bp['boxes'][kk], facecolor=colorLst[kk])
+
+        if label1 is not None:
+            ax.set_xlabel(label1[k])
+        else:
+            ax.set_xlabel(str(k))
+        if xticklabel is None:
+            ax.set_xticks([])
+        else:
+            ax.set_xticks([y+1 for y in range(0,len(data[k]),2)])
+            ax.set_xticklabels(xticklabel)
+        # ax.ticklabel_format(axis='y', style='sci')
+    if label2 is not None:
+        if nc == 1:
+            ax.legend(bp['boxes'], label2, loc='best', frameon=False, ncol=2)
+        else:
+            axes[-1].legend(bp['boxes'], label2, loc='best', frameon=False, ncol=2, fontsize=12)
+    if title is not None:
+        fig.suptitle(title)
+    plt.savefig(path_fig,dpi=600)
+    # plt.close('all')
+    return median_dict

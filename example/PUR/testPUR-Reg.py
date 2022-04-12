@@ -1,5 +1,6 @@
 import sys
-sys.path.append('../')
+
+sys.path.append("../")
 from hydroDL import master
 from hydroDL.post import plot, stat
 import matplotlib.pyplot as plt
@@ -23,14 +24,20 @@ interfaceOpt = 1
 # Define root directory of database and output
 # Modify this based on your own location of CAMELS dataset and saved models
 
-rootDatabase = os.path.join(os.path.sep, 'scratch', 'Camels')  # CAMELS dataset root directory
-camels.initcamels(rootDatabase)  # initialize three camels module-scope variables in camels.py: dirDB, gageDict, statDict
+rootDatabase = os.path.join(
+    os.path.sep, "scratch", "Camels"
+)  # CAMELS dataset root directory
+camels.initcamels(
+    rootDatabase
+)  # initialize three camels module-scope variables in camels.py: dirDB, gageDict, statDict
 
-rootOut = os.path.join(os.path.sep, 'data', 'rnnStreamflow')  # Model output root directory
+rootOut = os.path.join(
+    os.path.sep, "data", "rnnStreamflow"
+)  # Model output root directory
 
 # The directory you defined in training to save the model under the above rootOut
-exp_name='PUR'
-exp_disp='Testrun'
+exp_name = "PUR"
+exp_disp = "Testrun"
 save_path = os.path.join(rootOut, exp_name, exp_disp)
 
 random.seed(159654)
@@ -39,50 +46,63 @@ random.seed(159654)
 
 # same as training, get the 7 regions basin ID for testing
 gageinfo = camels.gageDict
-hucinfo = gageinfo['huc']
-gageid = gageinfo['id']
+hucinfo = gageinfo["huc"]
+gageid = gageinfo["id"]
 # get the id list of each region
 regionID = list()
 regionNum = list()
-regionDivide = [ [1,2], [3,6], [4,5,7], [9,10], [8,11,12,13], [14,15,16,18], [17] ] # seven regions
+regionDivide = [
+    [1, 2],
+    [3, 6],
+    [4, 5, 7],
+    [9, 10],
+    [8, 11, 12, 13],
+    [14, 15, 16, 18],
+    [17],
+]  # seven regions
 for ii in range(len(regionDivide)):
     tempcomb = regionDivide[ii]
     tempregid = list()
     for ih in tempcomb:
-        tempid = gageid[hucinfo==ih].tolist()
+        tempid = gageid[hucinfo == ih].tolist()
         tempregid = tempregid + tempid
     regionID.append(tempregid)
     regionNum.append(len(tempregid))
 
 
 # test trained models
-testgpuid = 0 # which gpu used for testing
+testgpuid = 0  # which gpu used for testing
 torch.cuda.set_device(testgpuid)
 
 # # test models ran by different random seeds.
 # # final reported results are the mean of predictions from different seeds
 # seedid = [159654, 109958, 257886, 142365, 229837, 588859]
-seedid = [159654] # take this seed as an example
+seedid = [159654]  # take this seed as an example
 
 gageinfo = camels.gageDict
-gageid = gageinfo['id']
-subName = 'Sub'
-tRange = [19951001, 20051001] # testing periods
-testEpoch = 300 # test the saved model after trained how many epochs
+gageid = gageinfo["id"]
+subName = "Sub"
+tRange = [19951001, 20051001]  # testing periods
+testEpoch = 300  # test the saved model after trained how many epochs
 FDCMig = True  # option for Fractional FDC experiments, migrating 1/3 or 1/10 FDCs to all basins in the target region
 FDCrange = [19851001, 19951001]
-FDCstr = str(FDCrange[0])+'-'+str(FDCrange[1])
+FDCstr = str(FDCrange[0]) + "-" + str(FDCrange[1])
 
-expName = 'Full' # testing full-attribute model as an example. Could be 'Full', 'Noattr', '5attr'
-caseLst = ['-'.join(['Reg-85-95', subName, expName])] # PUR: 'Reg-85-95-Sub-Full'
-caseLst.append('-'.join(['Reg-85-95', subName, expName, 'FDC']) + FDCstr) # PUR with FDC: 'Reg-85-95-Sub-Full-FDC' + LCTstr
+expName = "Full"  # testing full-attribute model as an example. Could be 'Full', 'Noattr', '5attr'
+caseLst = ["-".join(["Reg-85-95", subName, expName])]  # PUR: 'Reg-85-95-Sub-Full'
+caseLst.append(
+    "-".join(["Reg-85-95", subName, expName, "FDC"]) + FDCstr
+)  # PUR with FDC: 'Reg-85-95-Sub-Full-FDC' + LCTstr
 
 # samFrac = [1/3, 1/10] # Fractional FDCs available in the target region
-samFrac = [1/3]
-migOptLst = [False, False] # the list indicating if it's migration experiment for each one in caseLst
+samFrac = [1 / 3]
+migOptLst = [
+    False,
+    False,
+]  # the list indicating if it's migration experiment for each one in caseLst
 if FDCMig == True:
     for im in range(len(samFrac)):
-        caseLst.append('-'.join(['Reg-85-95', subName, expName, 'FDC']) + FDCstr)
+        caseLst.append("-".join(["Reg-85-95", subName, expName, "FDC"]) + FDCstr)
         migOptLst.append(True)
 # caseLst summarizes all the experiment directories needed for testing
 
@@ -92,41 +112,41 @@ if FDCMig == True:
 sampleIndLst = list()
 for ir in range(len(regionID)):
     testBasin = regionID[ir]
-    sampNum = round(1/3 * len(testBasin))  # or 1/10
+    sampNum = round(1 / 3 * len(testBasin))  # or 1/10
     sampleIn = random.sample(range(0, len(testBasin)), sampNum)
     sampleIndLst.append(sampleIn)
-samLstFile = os.path.join(save_path, 'samp103Lst.json')  # or 'samp110Lst.json'
-with open(samLstFile, 'w') as fp:
+samLstFile = os.path.join(save_path, "samp103Lst.json")  # or 'samp110Lst.json'
+with open(samLstFile, "w") as fp:
     json.dump(sampleIndLst, fp, indent=4)
 
 
 # Load the sample Ind
-indfileLst = ['samp103Lst.json']  # ['samp103Lst.json', 'samp110Lst.json']
+indfileLst = ["samp103Lst.json"]  # ['samp103Lst.json', 'samp110Lst.json']
 sampleInLstAll = list()
 for ii in range(len(indfileLst)):
     samLstFile = os.path.join(save_path, indfileLst[ii])
-    with open(samLstFile, 'r') as fp:
+    with open(samLstFile, "r") as fp:
         tempind = json.load(fp)
     sampleInLstAll.append(tempind)
 
-for iEns in range(len(seedid)): #test trained models with different seeds
+for iEns in range(len(seedid)):  # test trained models with different seeds
     tempseed = seedid[iEns]
     predtempLst = []
     regcount = 0
 
     # for iT in range(len(regionID)): # test all the 7 regions
-    for iT in range(0, 1): # take region 1 as an example
-        testBasin = regionID[iT] # testing basins
+    for iT in range(0, 1):  # take region 1 as an example
+        testBasin = regionID[iT]  # testing basins
         testInd = [gageid.tolist().index(x) for x in testBasin]
         trainBasin = list(set(gageid.tolist()) - set(testBasin))
         trainInd = [gageid.tolist().index(x) for x in trainBasin]
-        testregdic = 'Reg-'+str(iT+1)+'-Num'+str(regionNum[iT])
+        testregdic = "Reg-" + str(iT + 1) + "-Num" + str(regionNum[iT])
 
         # Migrate FDC for fractional experiment based on the nearest distance
         if FDCMig == True:
             FDCList = []
-            testlat = gageinfo['lat'][testInd]
-            testlon = gageinfo['lon'][testInd]
+            testlat = gageinfo["lat"][testInd]
+            testlon = gageinfo["lon"][testInd]
             for iF in range(len(samFrac)):
                 sampleInLst = sampleInLstAll[iF]
                 samplelat = testlat[sampleInLst[iT]]
@@ -135,12 +155,16 @@ for iEns in range(len(seedid)): #test trained models with different seeds
                 # calculate distances to the gages with FDC available
                 # and identify using the FDC of which gage for each test basin
                 for ii in range(len(testlat)):
-                    dist = np.sqrt((samplelat-testlat[ii])**2 + (samplelon-testlon[ii])**2)
+                    dist = np.sqrt(
+                        (samplelat - testlat[ii]) ** 2 + (samplelon - testlon[ii]) ** 2
+                    )
                     nearID.append(np.argmin(dist))
                 FDCLS = gageid[testInd][sampleInLst[iT]][nearID].tolist()
                 FDCList.append(FDCLS)
 
-        outLst = [os.path.join(save_path, str(tempseed), testregdic, x) for x in caseLst]
+        outLst = [
+            os.path.join(save_path, str(tempseed), testregdic, x) for x in caseLst
+        ]
         # all the directories to test in this list
 
         icount = 0
@@ -150,29 +174,19 @@ for iEns in range(len(seedid)): #test trained models with different seeds
             if interfaceOpt == 1:
                 # load testing data
                 mDict = master.readMasterFile(out)
-                optData = mDict['data']
-                df = camels.DataframeCamels(
-                    subset=testBasin, tRange=tRange)
-                x = df.getDataTs(
-                    varLst=optData['varT'],
-                    doNorm=False,
-                    rmNan=False)
-                obs = df.getDataObs(
-                    doNorm=False,
-                    rmNan=False,
-                    basinnorm=False)
-                c = df.getDataConst(
-                    varLst=optData['varC'],
-                    doNorm=False,
-                    rmNan=False)
+                optData = mDict["data"]
+                df = camels.DataframeCamels(subset=testBasin, tRange=tRange)
+                x = df.getDataTs(varLst=optData["varT"], doNorm=False, rmNan=False)
+                obs = df.getDataObs(doNorm=False, rmNan=False, basinnorm=False)
+                c = df.getDataConst(varLst=optData["varC"], doNorm=False, rmNan=False)
 
                 # do normalization and remove nan
                 # load the saved statDict
-                statFile = os.path.join(out, 'statDict.json')
-                with open(statFile, 'r') as fp:
+                statFile = os.path.join(out, "statDict.json")
+                with open(statFile, "r") as fp:
                     statDict = json.load(fp)
-                seriesvarLst = optData['varT']
-                climateList = optData['varC']
+                seriesvarLst = optData["varT"]
+                climateList = optData["varC"]
                 attr_norm = camels.transNormbyDic(c, climateList, statDict, toNorm=True)
                 attr_norm[np.isnan(attr_norm)] = 0.0
                 xTest = camels.transNormbyDic(x, seriesvarLst, statDict, toNorm=True)
@@ -182,21 +196,27 @@ for iEns in range(len(seedid)): #test trained models with different seeds
                 else:
                     attrs = attr_norm
 
-
-                if optData['lckernel'] is not None:
+                if optData["lckernel"] is not None:
                     if migOptLst[icount] is True:
                         # the case migrating FDCs
-                        dffdc = camels.DataframeCamels(subset=FDCList[imig], tRange=optData['lckernel'])
-                        imig = imig+1
+                        dffdc = camels.DataframeCamels(
+                            subset=FDCList[imig], tRange=optData["lckernel"]
+                        )
+                        imig = imig + 1
                     else:
-                        dffdc = camels.DataframeCamels(subset=testBasin, tRange=optData['lckernel'])
+                        dffdc = camels.DataframeCamels(
+                            subset=testBasin, tRange=optData["lckernel"]
+                        )
                     datatemp = dffdc.getDataObs(
-                        doNorm=False, rmNan=False, basinnorm=True)
+                        doNorm=False, rmNan=False, basinnorm=True
+                    )
                     # normalize data
-                    dadata = camels.transNormbyDic(datatemp, 'runoff', statDict, toNorm=True)
+                    dadata = camels.transNormbyDic(
+                        datatemp, "runoff", statDict, toNorm=True
+                    )
                     dadata = np.squeeze(dadata)  # dim Ngrid*Nday
                     fdcdata = master.master.calFDC(dadata)
-                    print('FDC was calculated and used!')
+                    print("FDC was calculated and used!")
                     xIn = (xTest, fdcdata)
                 else:
                     xIn = xTest
@@ -204,46 +224,64 @@ for iEns in range(len(seedid)): #test trained models with different seeds
                 # load and forward the model for testing
                 testmodel = loadModel(out, epoch=testEpoch)
                 filePathLst = master.master.namePred(
-                    out, tRange, 'All', epoch=testEpoch) # prepare the name of csv files to save testing results
-                train.testModel(
-                    testmodel, xIn, c=attrs, filePathLst=filePathLst)
+                    out, tRange, "All", epoch=testEpoch
+                )  # prepare the name of csv files to save testing results
+                train.testModel(testmodel, xIn, c=attrs, filePathLst=filePathLst)
                 # read out predictions
                 dataPred = np.ndarray([obs.shape[0], obs.shape[1], len(filePathLst)])
                 for k in range(len(filePathLst)):
                     filePath = filePathLst[k]
                     dataPred[:, :, k] = pd.read_csv(
-                        filePath, dtype=np.float, header=None).values
+                        filePath, dtype=np.float, header=None
+                    ).values
                 # transform back to the original observation
-                temppred = camels.transNormbyDic(dataPred, 'runoff', statDict, toNorm=False)
+                temppred = camels.transNormbyDic(
+                    dataPred, "runoff", statDict, toNorm=False
+                )
                 pred = camels.basinNorm(temppred, np.array(testBasin), toNorm=False)
 
             elif interfaceOpt == 0:
                 if migOptLst[icount] is True:
                     # for FDC migration case
-                    df, pred, obs = master.test(out, tRange=tRange, subset=testBasin, basinnorm=True, epoch=testEpoch,
-                                                reTest=True, FDCgage=FDCList[imig])
+                    df, pred, obs = master.test(
+                        out,
+                        tRange=tRange,
+                        subset=testBasin,
+                        basinnorm=True,
+                        epoch=testEpoch,
+                        reTest=True,
+                        FDCgage=FDCList[imig],
+                    )
                     imig = imig + 1
                 else:
                     # for other ordinary cases
-                    df, pred, obs = master.test(out, tRange=tRange, subset=testBasin, basinnorm=True, epoch=testEpoch,
-                                                reTest=True)
+                    df, pred, obs = master.test(
+                        out,
+                        tRange=tRange,
+                        subset=testBasin,
+                        basinnorm=True,
+                        epoch=testEpoch,
+                        reTest=True,
+                    )
 
             ## change the units ft3/s to m3/s
-            obs = obs*0.0283168
-            pred = pred*0.0283168
+            obs = obs * 0.0283168
+            pred = pred * 0.0283168
 
             # concatenate results in different regions to one array
             # and save the array of different experiments to a list
             if regcount == 0:
                 predtempLst.append(pred)
             else:
-                predtempLst[icount] = np.concatenate([predtempLst[icount], pred], axis=0)
+                predtempLst[icount] = np.concatenate(
+                    [predtempLst[icount], pred], axis=0
+                )
             icount = icount + 1
         if regcount == 0:
             obsAll = obs
         else:
             obsAll = np.concatenate([obsAll, obs], axis=0)
-        regcount = regcount+1
+        regcount = regcount + 1
 
     # concatenate results of different seeds to the third dim of array
     if iEns == 0:
@@ -262,7 +300,7 @@ for ii in range(len(outLst)):
 
 # plot boxplots for different experiments
 statDictLst = [stat.statError(x.squeeze(), obsAll.squeeze()) for x in ensLst]
-keyLst=['NSE', 'KGE'] # which metric to show
+keyLst = ["NSE", "KGE"]  # which metric to show
 dataBox = list()
 for iS in range(len(keyLst)):
     statStr = keyLst[iS]
@@ -273,23 +311,23 @@ for iS in range(len(keyLst)):
         temp.append(data)
     dataBox.append(temp)
 
-plt.rcParams['font.size'] = 14
-labelname = ['PUR', 'PUR-FDC', 'PUR-1/3FDC']
-xlabel = ['NSE', 'KGE']
+plt.rcParams["font.size"] = 14
+labelname = ["PUR", "PUR-FDC", "PUR-1/3FDC"]
+xlabel = ["NSE", "KGE"]
 fig = plot.plotBoxFig(dataBox, xlabel, labelname, sharey=False, figsize=(6, 5))
-fig.patch.set_facecolor('white')
+fig.patch.set_facecolor("white")
 fig.show()
 
 # save evaluation results
-outpath = os.path.join(save_path, 'TestResults', expName)
+outpath = os.path.join(save_path, "TestResults", expName)
 if not os.path.isdir(outpath):
     os.makedirs(outpath)
 
-EnsEvaFile = os.path.join(outpath, 'EnsEva'+str(testEpoch)+'.npy')
+EnsEvaFile = os.path.join(outpath, "EnsEva" + str(testEpoch) + ".npy")
 np.save(EnsEvaFile, statDictLst)
 
-obsFile = os.path.join(outpath, 'obs.npy')
+obsFile = os.path.join(outpath, "obs.npy")
 np.save(obsFile, obsAll)
 
-predFile = os.path.join(outpath, 'pred'+str(testEpoch)+'.npy')
+predFile = os.path.join(outpath, "pred" + str(testEpoch) + ".npy")
 np.save(predFile, predLst)

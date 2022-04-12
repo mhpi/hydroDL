@@ -1,31 +1,71 @@
-This code contains deep learning code used to modeling hydrologic systems, from soil moisture to streamflow, from projection to forecast. 
+This code contains deep learning code used to model hydrologic systems from soil moisture to streamflow or from projection to forecast. 
 
-This released code depends on our hydroDL repository, please follow our original github repository where we will release new updates occasionally
-https://github.com/mhpi/hydroDL
-# Citations
+[![PyPI](https://img.shields.io/badge/pypi-version%200.1-blue)]()  [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3993880.svg)](https://doi.org/10.5281/zenodo.3993880) [![CodeStyle](https://img.shields.io/badge/code%20style-Black-black)]()
 
-If you find our code to be useful, please cite the following papers:
 
-Feng, DP., Lawson, K., and CP. Shen, Mitigating prediction error of deep learning streamflow models in large data-sparse regions with ensemble modeling and soft data, Geophysical Research Letters (2021), https://doi.org/10.1029/2021GL092999
+# Installation
+There are three different methods for hydroDL installation:
 
-Feng, DP, K. Fang and CP. Shen, Enhancing streamflow forecast and extracting insights using continental-scale long-short term memory networks with data integration, Water Resources Research (2020), https://doi.org/10.1029/2019WR026793
-
-Shen, CP., A trans-disciplinary review of deep learning research and its relevance for water resources scientists, Water Resources Research. 54(11), 8558-8593, doi: 10.1029/2018WR022643 (2018) https://doi.org/10.1029/2018WR022643
-
-Major code contributor: Dapeng Feng (PhD Student, Penn State) and Kuai Fang (PhD., Penn State)
-
-# Examples
-The environment we are using is shown as the file `repoenv.yml`. To create the same conda environment, please run:
+### 1) Using Conda
+Create a new environment, then activate it
   ```Shell
 conda env create -f repoenv.yml
-```
-Activate the installed environment before running the code:
-  ```Shell
 conda activate mhpihydrodl
 ```
-You can also use this `Environment Setup_Tutorial.pdf` document as a reference to set up your environment and solve some frequently encountered questions. 
-There may be a small compatibility issue with our code when using very high pyTorch version. Welcome to contact us if you find any issue not able to solve or bug.
 
+### 2) Using PyPI (stable package)
+Install our hydroDL stable package from pip
+```
+pip install hydroDL
+```
+
+### 3) Source latest version
+Install our latest hydroDL package from github
+```
+pip install git+https://https://github.com/mhpi/hydroDL
+```
+
+_Note:_
+There exists a small compatibility issue with our code when using the latest pyTorch version. Feel free to contact us if you find any issues or code bugs that you cannot resolve.
+
+# Quick Start:
+_The detailed code for quick start can be found in [tutorial_quick_start.py](./example/tutorial_quick_start.py)_
+
+See below for a brief explanation of the major components you need to run a hydroDL model:
+```Shell
+# imports
+from hydroDL.model.crit import RmseLoss
+from hydroDL.model.rnn import CudnnLstmModel as LSTM
+from hydroDL.model.train import trainModel
+from hydroDL.model.test import testModel
+
+# load your training and testing data 
+# x: forcing data (pixels, time, features)
+# c: attribute data (pixels, features)
+# y: observed values (pixels, time, 1)
+x_train, c_train, y_train, x_val, c_val, y_val = load_data(...)
+
+# define your model and loss function
+model = LSTM(nx=num_variables, ny=1)
+loss_fn = RmseLoss()
+
+# train your model
+model = trainModel(model,
+    x_train,
+    y_train,
+    c_train,
+    loss_fn,
+)
+
+# validate your model
+pred = testModel(model,
+             x_val,
+             c_val,
+)
+
+```
+
+# Examples
 
 Several examples related to the above papers are presented here. **Click the title link** to see each example.
 ## [1.Train a LSTM data integration model to make streamflow forecast](example/StreamflowExample-DI.py)
@@ -56,35 +96,29 @@ Fang et al. (2017), [Prolongation of SMAP to Spatio-temporally Seamless Coverage
 ## [4.Estimate uncertainty of a LSTM network ](example/train-lstm-mca.py)
 Related papers:  
 Fang et al. (2020). [Evaluating the potential and challenges of an uncertainty quantification method for long short-term memory models for soil moisture predictions](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020WR028095), Water Resources Research.
+
+## [5.Training a multi-scale model](example/tutorial_multiscale.py)
+How to use: [click here](example/multiscale/README.md)
+
+Related papers:  
+Liu et al. (2022). [A multiscale deep learning model for soil moisture integrating satellite and in-situ data](https://doi.org/10.1029/2021GL096847), Geophysical Research Letters.
+
+# Citations
+
+If you find our code to be useful, please cite the following papers:
+
+Feng, DP., Lawson, K., and CP. Shen, Mitigating prediction error of deep learning streamflow models in large data-sparse regions with ensemble modeling and soft data, Geophysical Research Letters (2021), https://doi.org/10.1029/2021GL092999
+
+Feng, DP, K. Fang and CP. Shen, Enhancing streamflow forecast and extracting insights using continental-scale long-short term memory networks with data integration, Water Resources Research (2020), https://doi.org/10.1029/2019WR026793
+
+Shen, CP., A trans-disciplinary review of deep learning research and its relevance for water resources scientists, Water Resources Research. 54(11), 8558-8593, doi: 10.1029/2018WR022643 (2018) https://doi.org/10.1029/2018WR022643
+
+Liu, J., Rahmani, F., Lawson, K., & Shen, C. A multiscale deep learning model for soil moisture integrating satellite and in-situ data. Geophysical Research Letters, e2021GL096847 (2022). https://doi.org/10.1029/2021GL096847
+
+
+Major code contributor: Dapeng Feng (PhD Student, Penn State), Jiangtao Liu(PhD Student., Penn State), Tadd Bindas (PhD Student., Penn State), and Kuai Fang (PhD., Penn State).
+
 # License
-Non-Commercial Software License Agreement
+hydroDL has a Non-Commercial license, as found in the [LICENSE](./LICENSE) file.
 
-By downloading the hydroDL software (the “Software”) you agree to
-the following terms of use:
-Copyright (c) 2020, The Pennsylvania State University (“PSU”). All rights reserved.
 
-1. PSU hereby grants to you a perpetual, nonexclusive and worldwide right, privilege and
-license to use, reproduce, modify, display, and create derivative works of Software for all
-non-commercial purposes only. You may not use Software for commercial purposes without
-prior written consent from PSU. Queries regarding commercial licensing should be directed
-to The Office of Technology Management at 814.865.6277 or otminfo@psu.edu.
-2. Neither the name of the copyright holder nor the names of its contributors may be used
-to endorse or promote products derived from this software without specific prior written
-permission.
-3. This software is provided for non-commercial use only.
-4. Redistribution and use in source and binary forms, with or without modification, are
-permitted provided that redistributions must reproduce the above copyright notice, license,
-list of conditions and the following disclaimer in the documentation and/or other materials
-provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &quot;AS IS&quot;
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGE.

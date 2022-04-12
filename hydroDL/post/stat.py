@@ -2,7 +2,7 @@ import numpy as np
 import scipy.stats
 from hydroDL.master.master import calFDC
 
-keyLst = ['Bias', 'RMSE', 'ubRMSE', 'Corr']
+keyLst = ["Bias", "RMSE", "ubRMSE", "Corr"]
 
 
 def statError(pred, target):
@@ -10,13 +10,13 @@ def statError(pred, target):
     # Bias
     Bias = np.nanmean(pred - target, axis=1)
     # RMSE
-    RMSE = np.sqrt(np.nanmean((pred - target)**2, axis=1))
+    RMSE = np.sqrt(np.nanmean((pred - target) ** 2, axis=1))
     # ubRMSE
     predMean = np.tile(np.nanmean(pred, axis=1), (nt, 1)).transpose()
     targetMean = np.tile(np.nanmean(target, axis=1), (nt, 1)).transpose()
     predAnom = pred - predMean
     targetAnom = target - targetMean
-    ubRMSE = np.sqrt(np.nanmean((predAnom - targetAnom)**2, axis=1))
+    ubRMSE = np.sqrt(np.nanmean((predAnom - targetAnom) ** 2, axis=1))
     # FDC metric
     predFDC = calFDC(pred)
     targetFDC = calFDC(target)
@@ -64,14 +64,35 @@ def statError(pred, target):
                 yystd = np.std(yy)
                 xxmean = xx.mean()
                 xxstd = np.std(xx)
-                KGE[k] = 1 - np.sqrt((Corr[k]-1)**2 + (xxstd/yystd-1)**2 + (xxmean/yymean-1)**2)
-                KGE12[k] = 1 - np.sqrt((Corr[k] - 1) ** 2 + ((xxstd*yymean)/ (yystd*xxmean) - 1) ** 2 + (xxmean / yymean - 1) ** 2)
-                SST = np.sum((yy-yymean)**2)
-                SSReg = np.sum((xx-yymean)**2)
-                SSRes = np.sum((yy-xx)**2)
-                R2[k] = 1-SSRes/SST
-                NSE[k] = 1-SSRes/SST
+                KGE[k] = 1 - np.sqrt(
+                    (Corr[k] - 1) ** 2
+                    + (xxstd / yystd - 1) ** 2
+                    + (xxmean / yymean - 1) ** 2
+                )
+                KGE12[k] = 1 - np.sqrt(
+                    (Corr[k] - 1) ** 2
+                    + ((xxstd * yymean) / (yystd * xxmean) - 1) ** 2
+                    + (xxmean / yymean - 1) ** 2
+                )
+                SST = np.sum((yy - yymean) ** 2)
+                SSReg = np.sum((xx - yymean) ** 2)
+                SSRes = np.sum((yy - xx) ** 2)
+                R2[k] = 1 - SSRes / SST
+                NSE[k] = 1 - SSRes / SST
 
-    outDict = dict(Bias=Bias, RMSE=RMSE, ubRMSE=ubRMSE, Corr=Corr, R2=R2, NSE=NSE,
-                   FLV=PBiaslow, FHV=PBiashigh, PBias=PBias, PBiasother=PBiasother, KGE=KGE, KGE12=KGE12, fdcRMSE=FDCRMSE)
+    outDict = dict(
+        Bias=Bias,
+        RMSE=RMSE,
+        ubRMSE=ubRMSE,
+        Corr=Corr,
+        R2=R2,
+        NSE=NSE,
+        FLV=PBiaslow,
+        FHV=PBiashigh,
+        PBias=PBias,
+        PBiasother=PBiasother,
+        KGE=KGE,
+        KGE12=KGE12,
+        fdcRMSE=FDCRMSE,
+    )
     return outDict

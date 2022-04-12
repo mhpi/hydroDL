@@ -9,46 +9,83 @@ import pandas as pd
 import time
 import datetime as dt
 import hydroDL.utils as utils
-from . import Dataframe, DataModel
+from hydroDL.dataset import Dataframe, DataModel
 import hydroDL
 
 ################################################
 # The definitions between ### are for convenience only.
 # You don't need them unless you are calling them from outside,
-# e.g., "dbCsv.xxx", or if you call DataModelCsv without supplying 
+# e.g., "dbCsv.xxx", or if you call DataModelCsv without supplying
 # actual arguments
 # This block shouldn't be here.
 # We will phase out these definitions from this file gradually.
 
-varTarget = ['SMAP_AM']
+varTarget = ["SMAP_AM"]
 # ===== SMAP varForcing =====
 varForcing = [
-    'APCP_FORA', 'DLWRF_FORA', 'DSWRF_FORA', 'TMP_2_FORA', 'SPFH_2_FORA',
-    'VGRD_10_FORA', 'UGRD_10_FORA'
+    "APCP_FORA",
+    "DLWRF_FORA",
+    "DSWRF_FORA",
+    "TMP_2_FORA",
+    "SPFH_2_FORA",
+    "VGRD_10_FORA",
+    "UGRD_10_FORA",
 ]
 
 varConst = [
-    'Bulk', 'Capa', 'Clay', 'NDVI', 'Sand', 'Silt', 'flag_albedo',
-    'flag_extraOrd', 'flag_landcover', 'flag_roughness', 'flag_vegDense',
-    'flag_waterbody'
+    "Bulk",
+    "Capa",
+    "Clay",
+    "NDVI",
+    "Sand",
+    "Silt",
+    "flag_albedo",
+    "flag_extraOrd",
+    "flag_landcover",
+    "flag_roughness",
+    "flag_vegDense",
+    "flag_waterbody",
 ]
 
 varSoilM = [
-    'APCP_FORA', 'DLWRF_FORA', 'DSWRF_FORA', 'TMP_2_FORA', 'SPFH_2_FORA',
-    'VGRD_10_FORA', 'UGRD_10_FORA', 'SOILM_0-10_NOAH'
+    "APCP_FORA",
+    "DLWRF_FORA",
+    "DSWRF_FORA",
+    "TMP_2_FORA",
+    "SPFH_2_FORA",
+    "VGRD_10_FORA",
+    "UGRD_10_FORA",
+    "SOILM_0-10_NOAH",
 ]
 
-varForcingGlobal = ['GPM', 'Wind', 'Tair', 'Psurf', 'Qair', 'SWdown', 'LWdown']
+varForcingGlobal = ["GPM", "Wind", "Tair", "Psurf", "Qair", "SWdown", "LWdown"]
 varSoilmGlobal = [
-    'SoilMoi0-10', 'GPM', 'Wind', 'Tair', 'Psurf', 'Qair', 'SWdown', 'LWdown'
+    "SoilMoi0-10",
+    "GPM",
+    "Wind",
+    "Tair",
+    "Psurf",
+    "Qair",
+    "SWdown",
+    "LWdown",
 ]
 varConstGlobal = [
-    'Bulk', 'Capa', 'Clay', 'NDVI', 'Sand', 'Silt', 'flag_albedo',
-    'flag_extraOrd', 'flag_landcover', 'flag_roughness', 'flag_vegDense',
-    'flag_waterbody'
+    "Bulk",
+    "Capa",
+    "Clay",
+    "NDVI",
+    "Sand",
+    "Silt",
+    "flag_albedo",
+    "flag_extraOrd",
+    "flag_landcover",
+    "flag_roughness",
+    "flag_vegDense",
+    "flag_waterbody",
 ]
 
 ################################################
+
 
 def t2yrLst(tArray):
     t1 = tArray[0].astype(object)
@@ -87,7 +124,7 @@ def readDBinfo(*, rootDB, subset):
 
 def readSubset(*, rootDB, subset):
     subsetFile = os.path.join(rootDB, "Subset", subset + ".csv")
-    print('reading subset ' + subsetFile)
+    print("reading subset " + subsetFile)
     dfSubset = pd.read_csv(subsetFile, dtype=np.int64, header=0)
     rootName = dfSubset.columns.values[0]
     indSub = dfSubset.values.flatten()
@@ -98,16 +135,18 @@ def readDBtime(*, rootDB, rootName, yrLst):
     tnum = np.empty(0, dtype=np.datetime64)
     for yr in yrLst:
         timeFile = os.path.join(rootDB, rootName, str(yr), "timeStr.csv")
-        temp = (pd.read_csv(timeFile, dtype=str, header=None).astype(
-            np.datetime64).values.flatten())
+        temp = (
+            pd.read_csv(timeFile, dtype=str, header=None)
+            .astype(np.datetime64)
+            .values.flatten()
+        )
         tnum = np.concatenate([tnum, temp], axis=0)
     return tnum
 
 
 def readVarLst(*, rootDB, varLst):
     varFile = os.path.join(rootDB, "Variable", varLst + ".csv")
-    varLst = pd.read_csv(
-        varFile, header=None, dtype=str).values.flatten().tolist()
+    varLst = pd.read_csv(varFile, header=None, dtype=str).values.flatten().tolist()
     return varLst
 
 
@@ -123,7 +162,8 @@ def readDataTS(*, rootDB, rootName, indSub, indSkip, yrLst, fieldName):
         t1 = time.time()
         dataFile = os.path.join(rootDB, rootName, str(yr), fieldName + ".csv")
         dataTemp = pd.read_csv(
-            dataFile, dtype=np.float, skiprows=indSkip, header=None).values
+            dataFile, dtype=np.float, skiprows=indSkip, header=None
+        ).values
         k2 = k1 + dataTemp.shape[1]
         data[:, k1:k2] = dataTemp
         k1 = k2
@@ -136,8 +176,8 @@ def readDataConst(*, rootDB, rootName, indSub, indSkip, fieldName):
     # read data
     dataFile = os.path.join(rootDB, rootName, "const", fieldName + ".csv")
     data = pd.read_csv(
-        dataFile, dtype=np.float, skiprows=indSkip,
-        header=None).values.flatten()
+        dataFile, dtype=np.float, skiprows=indSkip, header=None
+    ).values.flatten()
     data[np.where(data == -9999)] = np.nan
     return data
 
@@ -146,8 +186,9 @@ def readStat(*, rootDB, fieldName, isConst=False):
     if isConst is False:
         statFile = os.path.join(rootDB, "Statistics", fieldName + "_stat.csv")
     else:
-        statFile = os.path.join(rootDB, "Statistics",
-                                "const_" + fieldName + "_stat.csv")
+        statFile = os.path.join(
+            rootDB, "Statistics", "const_" + fieldName + "_stat.csv"
+        )
     stat = pd.read_csv(statFile, dtype=np.float, header=None).values.flatten()
     return stat
 
@@ -158,16 +199,16 @@ def transNorm(data, *, rootDB, fieldName, fromRaw=True, isConst=False):
         dataOut = (data - stat[2]) / stat[3]
     else:
         dataOut = data * stat[3] + stat[2]
-    return (dataOut)
+    return dataOut
 
 
 def transNormSigma(data, *, rootDB, fieldName, fromRaw=True):
     stat = readStat(rootDB=rootDB, fieldName=fieldName, isConst=False)
     if fromRaw is True:
-        dataOut = np.log((data / stat[3])**2)
+        dataOut = np.log((data / stat[3]) ** 2)
     else:
         dataOut = np.sqrt(np.exp(data)) * stat[3]
-    return (dataOut)
+    return dataOut
 
 
 class DataframeCsv(Dataframe):
@@ -175,8 +216,7 @@ class DataframeCsv(Dataframe):
         super(DataframeCsv, self).__init__()
         self.rootDB = rootDB
         self.subset = subset
-        rootName, crd, indSub, indSkip = readDBinfo(
-            rootDB=rootDB, subset=subset)
+        rootName, crd, indSub, indSkip = readDBinfo(rootDB=rootDB, subset=subset)
         self.lat = crd[:, 0]
         self.lon = crd[:, 1]
         self.indSub = indSub
@@ -202,10 +242,10 @@ class DataframeCsv(Dataframe):
                 indSub=self.indSub,
                 indSkip=self.indSkip,
                 yrLst=yrLst,
-                fieldName=varLst[k])
+                fieldName=varLst[k],
+            )
             if doNorm is True:
-                dataTemp = transNorm(
-                    dataTemp, rootDB=self.rootDB, fieldName=varLst[k])
+                dataTemp = transNorm(dataTemp, rootDB=self.rootDB, fieldName=varLst[k])
             data[:, :, k] = dataTemp
         if rmNan is True:
             data[np.where(np.isnan(data))] = 0
@@ -224,13 +264,12 @@ class DataframeCsv(Dataframe):
                 rootName=self.rootName,
                 indSub=self.indSub,
                 indSkip=self.indSkip,
-                fieldName=varLst[k])
+                fieldName=varLst[k],
+            )
             if doNorm is True:
                 dataTemp = transNorm(
-                    dataTemp,
-                    rootDB=self.rootDB,
-                    fieldName=varLst[k],
-                    isConst=True)
+                    dataTemp, rootDB=self.rootDB, fieldName=varLst[k], isConst=True
+                )
             data[:, k] = dataTemp
         if rmNan is True:
             data[np.where(np.isnan(data))] = 0
@@ -238,17 +277,19 @@ class DataframeCsv(Dataframe):
 
 
 class DataModelCsv(DataModel):
-    def __init__(self,
-                 *,
-                 rootDB=hydroDL.pathSMAP['DB_L3_Global'],
-                 subset='CONUSv4f1',
-                 varT=varForcing,
-                 varC=varConst,
-                 target='SMAP_AM',
-                 tRange=[20150401, 20160401],
-                 doNorm=[True, True],
-                 rmNan=[True, False],
-                 daObs=0):
+    def __init__(
+        self,
+        *,
+        rootDB=hydroDL.pathSMAP["DB_L3_Global"],
+        subset="CONUSv4f1",
+        varT=varForcing,
+        varC=varConst,
+        target="SMAP_AM",
+        tRange=[20150401, 20160401],
+        doNorm=[True, True],
+        rmNan=[True, False],
+        daObs=0
+    ):
         super(DataModelCsv, self).__init__()
         df = DataframeCsv(rootDB=rootDB, subset=subset, tRange=tRange)
 
