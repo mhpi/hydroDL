@@ -1,5 +1,6 @@
 import os
 import io
+import setuptools
 from setuptools import setup, find_packages, Command
 
 required_python = ">=3.0"
@@ -29,7 +30,9 @@ setup(
     author_email="cshen@engr.psu.edu",
     python_requires=required_python,
     url=URL,
-    packages=["hydroDL"],
+    # packages=["hydroDL"],
+    package_dir={"":"hydroDL"},
+    packages=setuptools.find_packages(where="hydroDL"),
     install_requires=required,
     include_package_data=True,
     license="Non-Commercial Software License",
