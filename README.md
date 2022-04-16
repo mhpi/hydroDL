@@ -14,7 +14,7 @@ conda activate mhpihydrodl
 ```
 
 ### 2) Using PyPI (stable package)
-Install our hydroDL stable package from pip
+Install our hydroDL stable package from pip (Python version>=3.7.0)
 ```
 pip install hydroDL
 ```

@@ -222,7 +222,7 @@ dependencies:
   - pytest-doctestplus=0.3.0=py36_0
   - pytest-openfiles=0.3.2=py36_0
   - pytest-remotedata=0.3.1=py36_0
-  - python=3.6.8=h0371630_0
+  - python=3.7.13=h12debd9_0
   - python-dateutil=2.8.0=py36_0
   - python-libarchive-c=2.8=py36_6
   - pytorch=1.0.1=cuda100py36he554f03_0
