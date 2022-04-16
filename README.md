@@ -9,7 +9,7 @@ There are three different methods for hydroDL installation:
 ### 1) Using Conda
 Create a new environment, then activate it
   ```Shell
-conda env create -f repoenv.yml
+conda env create -f environment.yml
 conda activate mhpihydrodl
 ```
 
