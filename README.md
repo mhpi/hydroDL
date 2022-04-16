@@ -4,7 +4,7 @@ This code contains deep learning code used to model hydrologic systems from soil
 
 
 # Installation
-There are three different methods for hydroDL installation:
+There are two different methods for hydroDL installation:
 
 ### 1) Using Conda
 Create a new environment, then activate it
