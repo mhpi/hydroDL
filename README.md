@@ -6,20 +6,19 @@ This code contains deep learning code used to model hydrologic systems from soil
 # Installation
 There are two different methods for hydroDL installation:
 
-### 1) Using Conda
-Create a new environment, then activate it
+### Create a new environment, then activate it
   ```Shell
 conda create -n mhpihydrodl python=3.7
 conda activate mhpihydrodl
 ```
 
-### 2) Using PyPI (stable package)
+### 1) Using PyPI (stable package)
 Install our hydroDL stable package from pip (Python version>=3.7.0)
 ```
 pip install hydroDL
 ```
 
-### 3) Source latest version
+### 2) Source latest version
 Install our latest hydroDL package from github
 ```
 pip install git+https://github.com/mhpi/hydroDL
