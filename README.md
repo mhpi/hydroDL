@@ -25,6 +25,7 @@ pip install git+https://github.com/mhpi/hydroDL
 ```
 
 _Note:_
+If you don't have a GPU, please install the cpu version torch first. (conda install pytorch==1.4.0 torchvision==0.5.0 cpuonly -c pytorch)
 There exists a small compatibility issue with our code when using the latest pyTorch version. Feel free to contact us if you find any issues or code bugs that you cannot resolve.
 
 # Quick Start:
