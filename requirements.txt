@@ -1,4 +1,4 @@
-torch==1.4.0
+torch==1.7.1
 basemap==1.3.0
 
 numpy
