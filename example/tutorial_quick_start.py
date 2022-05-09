@@ -2,6 +2,9 @@ import os
 import torch
 import numpy as np
 
+import sys 
+sys.path.append('..')
+
 from hydroDL.master.master import loadModel
 from hydroDL.model.crit import RmseLoss
 from hydroDL.model.rnn import CudnnLstmModel as LSTM
