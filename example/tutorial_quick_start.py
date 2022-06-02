@@ -48,9 +48,7 @@ Data type: numpy.float
 """
 train_csv = LoadCSV(csv_path_s, train_date_list, all_date_list)
 x_train = train_csv.load_time_series(var_time_series)  # data size: [pixels, time, features]
-c_train = train_csv.load_constant(
-    var_constant, convert_time_series=False
-)  # [pixels, features]
+c_train = train_csv.load_constant(var_constant, convert_time_series=False)  # [pixels, features]
 y_train = train_csv.load_time_series(target, remove_nan=False)  # [pixels, time, 1]
 
 # define model and loss function
@@ -93,9 +91,7 @@ test_model = loadModel(output_s, epoch=val_epoch)
 save_csv = os.path.join(output_s, "predict.csv")
 
 # validation
-pred_val = testModel(
-test_model, x_val, c_val, batchSize=len(x_train), filePathLst=[save_csv],
-)
+pred_val = testModel(test_model, x_val, c_val, batchSize=len(x_train), filePathLst=[save_csv],)
 
 # select the metrics
 metrics_list = ["Bias", "RMSE", "ubRMSE", "Corr"]
@@ -105,7 +101,5 @@ pred_val = trans_norm(pred_val, csv_path_s, var_s=target[0], from_raw=False)
 y_val = trans_norm(y_val, csv_path_s, var_s=target[0], from_raw=False)
 pred_val, y_val = np.squeeze(pred_val), np.squeeze(y_val)
 metrics_dict = cal_metric(pred_val, y_val)  # calculate the metrics
-metrics = [
-"Median {}: {:.2f}".format(x, np.nanmedian(metrics_dict[x]))
-for x in metrics_list]
+metrics = ["Median {}: {:.4f}".format(x, np.nanmedian(metrics_dict[x])) for x in metrics_list]
 print("Epoch {}: {}".format(val_epoch, metrics))
