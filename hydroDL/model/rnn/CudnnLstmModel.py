@@ -12,7 +12,7 @@ import numpy as n
 
 
 class CudnnLstmModel(torch.nn.Module):
-    def __init__(self, *, nx, ny, hiddenSize, dr=0.5):
+    def __init__(self, *, nx, ny, hiddenSize, dr=0.5, warmUpDay=None):
         super(CudnnLstmModel, self).__init__()
         self.nx = nx
         self.ny = ny
@@ -32,6 +32,7 @@ class CudnnLstmModel(torch.nn.Module):
         self.name = "CudnnLstmModel"
         self.is_legacy = True
         # self.drtest = torch.nn.Dropout(p=0.4)
+        self.warmUpDay = warmUpDay
 
     def forward(self, x, doDropMC=False, dropoutFalse=False):
         """
@@ -41,6 +42,9 @@ class CudnnLstmModel(torch.nn.Module):
         :param dropoutFalse:
         :return:
         """
+        if not self.warmUpDay is None:
+            x, warmUpDay = self.extend_day(x, warmUpDay=self.warmUpDay)
+
         x0 = F.relu(self.linearIn(x))
         if torch.__version__ > "1.9":
             outLSTM, (hn, cn) = self.lstm(x0)
@@ -50,4 +54,19 @@ class CudnnLstmModel(torch.nn.Module):
             )
         # outLSTMdr = self.drtest(outLSTM)
         out = self.linearOut(outLSTM)
+
+        if not self.warmUpDay is None:
+            out = self.reduce_day(out, warmUpDay=warmUpDay)
+
         return out
+
+    def extend_day(self, x, warm_up_day):
+        x_num_day = x.shape[0]
+        warm_up_day = min(x_num_day, warm_up_day)
+        x_select = x[:warm_up_day, :, :]
+        x = torch.cat([x_select, x], dim=0)
+        return x, warm_up_day
+
+    def reduce_day(self, x, warm_up_day):
+        x = x[warm_up_day:,:,:]
+        return x

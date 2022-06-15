@@ -14,8 +14,10 @@ from hydroDL.model.test import testModel
 from hydroDL.post.stat import statError as cal_metric
 from hydroDL.data.load_csv import LoadCSV
 from hydroDL.utils.norm import re_folder, trans_norm
+from hydroDL.utils.norm import fix_seed
 
 # set configuration
+fix_seed(42)
 output_s = "./output/quick_start/"  # output path
 csv_path_s = "./demo_data/"  # demo data path
 all_date_list = ["2015-04-01", "2017-03-31"]  # demo data time period
@@ -32,10 +34,12 @@ target = ["SMAP_AM"]
 re_folder(output_s)
 
 # hyperparameter
-EPOCH = 100
+EPOCH = 20
 BATCH_SIZE = 50
 RHO = 30
 HIDDEN_SIZE = 256
+WARM_UP_DAY = 10
+# WARM_UP_DAY = None
 
 # load your datasets
 """
@@ -58,7 +62,7 @@ if torch.cuda.is_available():
     LSTM = LSTM
 else:
     LSTM = LSTM_CPU
-model = LSTM(nx=len(var_time_series) + len(var_constant), ny=len(target), hiddenSize=HIDDEN_SIZE)
+model = LSTM(nx=len(var_time_series) + len(var_constant), ny=len(target), hiddenSize=HIDDEN_SIZE, warmUpDay=WARM_UP_DAY)
 
 # training the model
 last_model = trainModel(

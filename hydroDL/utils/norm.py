@@ -69,3 +69,17 @@ def re_folder(path_s, del_old_path=False):
             pass
     else:
         re_folder_rec(path_s)
+
+def fix_seed(SEED):
+    import os
+    import numpy as np
+    import random
+    import torch
+    np.random.seed(SEED)
+    random.seed(SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.manual_seed(SEED)
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+    os.environ["PYTHONHASHSEED"] = str(SEED)
