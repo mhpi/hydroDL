@@ -83,3 +83,38 @@ def fix_seed(SEED):
     torch.cuda.manual_seed(SEED)
     torch.cuda.manual_seed_all(SEED)
     os.environ["PYTHONHASHSEED"] = str(SEED)
+
+def cal_statistics(data, re_extreme=True, percent=10):
+    """
+    data = np.arange(30).reshape([5,6])
+    cal_statistics(data)
+
+    re_extreme:
+        If re_extreme is True, calculate the value in the middle of 10% and 90% of the data
+    percent:
+        decide 10% or 90%
+    """
+
+    data = data.flatten().astype(np.float)
+    # convert -9999 into np.nan
+    data[data <= -999] = np.nan
+    data = data[~np.isnan(data)]  # remove nan
+
+    left_p10 = np.nanpercentile(data, percent, interpolation="nearest")
+    left_p90 = np.nanpercentile(data, 100 - percent, interpolation="nearest")
+
+    if re_extreme:
+        """
+        There's a bug hidden here that I can't fix. 
+        If lb=0, all the zeros will be included, which is the average of 90% of the data
+        """
+        data_80p = data[(data >= left_p10) & (data <= left_p90)]
+    else:
+        data_80p = data
+
+    mean = np.nanmean(data_80p)
+    eps = 1e-6
+    std = np.nanstd(data_80p) + eps
+    stat_list = [left_p10, left_p90, mean, std]  # mean for 80% data. std for 80% data.
+
+    return stat_list

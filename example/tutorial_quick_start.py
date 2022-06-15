@@ -45,6 +45,13 @@ c_train (constant data, e.g. soil properties, land cover ...): [pixels, features
 target (e.g. soil moisture, streamflow ...): [pixels, time, 1]
 
 Data type: numpy.float
+We have normalized the raw data. 
+example:
+    If the data size is "[pixels, time, features]" or "[pixels, features]", the statistics for 10% to 90% of the data are calculated as follows:
+    
+    from hydroDL.utils.norm import cal_statistics
+    stat_list = cal_statistics(data, re_extreme=True, percent=10)
+    [left_p10, left_p90, mean, std] = stat_list
 """
 train_csv = LoadCSV(csv_path_s, train_date_list, all_date_list)
 x_train = train_csv.load_time_series(var_time_series)  # data size: [pixels, time, features]
