@@ -280,7 +280,8 @@ class DataModelCsv(DataModel):
     def __init__(
         self,
         *,
-        rootDB=hydroDL.pathSMAP["DB_L3_Global"],
+        # rootDB=hydroDL.pathSMAP["DB_L3_Global"],
+        rootDB=None,
         subset="CONUSv4f1",
         varT=varForcing,
         varC=varConst,
