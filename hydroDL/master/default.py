@@ -2,10 +2,26 @@ import hydroDL
 from collections import OrderedDict
 from hydroDL.data import dbCsv, camels
 
+import os
+import collections
+
+dirDB = "/"
+dirOut = "/"
+dirResult = "/"
+
+pathSMAP = collections.OrderedDict(
+        DB_L3_Global=os.path.join(dirDB, "Daily_L3"),
+        DB_L3_NA=os.path.join(dirDB, "Daily_L3_NA"),
+        Out_L3_Global=os.path.join(dirOut, "L3_Global"),
+        Out_L3_NA=os.path.join(dirOut, "L3_NA"),
+        outTest=os.path.join(dirOut, "Test"),
+        dirResult=dirResult,
+    )
+
 # SMAP default options
 optDataSMAP = OrderedDict(
     name="hydroDL.data.dbCsv.DataframeCsv",
-    rootDB=hydroDL.pathSMAP["DB_L3_Global"],
+    rootDB=pathSMAP["DB_L3_Global"],
     subset="CONUSv4f1",
     varT=dbCsv.varForcing,
     varC=dbCsv.varConst,
