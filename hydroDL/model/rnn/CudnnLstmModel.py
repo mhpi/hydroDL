@@ -20,13 +20,10 @@ class CudnnLstmModel(torch.nn.Module):
         self.ct = 0
         self.nLayer = 1
         self.linearIn = torch.nn.Linear(nx, hiddenSize)
-        if torch.__version__ > "1.9":
-            # 2021-10-24. SCP: incorporate newer version of torch LSTM to avoid "weights not contiguous on memory" issue
-            self.lstm = torch.nn.LSTM(hiddenSize, hiddenSize, 2, dropout=dr)
-        else:
-            self.lstm = rnn.CudnnLstm(
-                inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr
-            )
+        
+        self.lstm = rnn.CudnnLstm(
+            inputSize=hiddenSize, hiddenSize=hiddenSize, dr=dr
+        )
         self.linearOut = torch.nn.Linear(hiddenSize, ny)
         self.gpu = 1
         self.name = "CudnnLstmModel"
@@ -46,12 +43,10 @@ class CudnnLstmModel(torch.nn.Module):
             x, warmUpDay = self.extend_day(x, warmUpDay=self.warmUpDay)
 
         x0 = F.relu(self.linearIn(x))
-        if torch.__version__ > "1.9":
-            outLSTM, (hn, cn) = self.lstm(x0)
-        else:
-            outLSTM, (hn, cn) = self.lstm(
-                x0, doDropMC=doDropMC, dropoutFalse=dropoutFalse
-            )
+        
+        outLSTM, (hn, cn) = self.lstm(
+            x0, doDropMC=doDropMC, dropoutFalse=dropoutFalse
+        )
         # outLSTMdr = self.drtest(outLSTM)
         out = self.linearOut(outLSTM)
 
