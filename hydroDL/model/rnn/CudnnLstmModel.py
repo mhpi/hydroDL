@@ -13,6 +13,7 @@ import numpy as n
 
 class CudnnLstmModel(torch.nn.Module):
     def __init__(self, *, nx, ny, hiddenSize, dr=0.5, warmUpDay=None):
+    # def __init__(self, *, nx, ny, hiddenSize, dr=0.5):
         super(CudnnLstmModel, self).__init__()
         self.nx = nx
         self.ny = ny
@@ -39,8 +40,8 @@ class CudnnLstmModel(torch.nn.Module):
         :param dropoutFalse:
         :return:
         """
-        if not self.warmUpDay is None:
-            x, warmUpDay = self.extend_day(x, warmUpDay=self.warmUpDay)
+        # if not self.warmUpDay is None:
+        #     x, warmUpDay = self.extend_day(x, warm_up_day=self.warmUpDay)
 
         x0 = F.relu(self.linearIn(x))
         
@@ -50,8 +51,8 @@ class CudnnLstmModel(torch.nn.Module):
         # outLSTMdr = self.drtest(outLSTM)
         out = self.linearOut(outLSTM)
 
-        if not self.warmUpDay is None:
-            out = self.reduce_day(out, warmUpDay=warmUpDay)
+        # if not self.warmUpDay is None:
+        #     out = self.reduce_day(out, warm_up_day=self.warmUpDay)
 
         return out
 

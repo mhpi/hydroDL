@@ -44,11 +44,11 @@ def plotBoxFig(
         if type(temp) is list:
             for kk in range(len(temp)):
                 tt = temp[kk]
-                if tt is not None and tt != []:
+                if tt is None or (isinstance(tt, np.ndarray) and tt.size == 0):
+                    temp[kk] = []
+                else:
                     tt = tt[~np.isnan(tt)]
                     temp[kk] = tt
-                else:
-                    temp[kk] = []
         else:
             temp = temp[~np.isnan(temp)]
         bp = ax.boxplot(

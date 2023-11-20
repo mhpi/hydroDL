@@ -9,6 +9,7 @@ import pandas as pd
 from time import sleep
 from tqdm import trange
 import hydroDL.core.logger as logger
+from hydroDL.model import crit
 from hydroDL.model.wrappers.ModelWrapper import ModelWrapper
 
 log = logger.get_logger("model.train_.train")
@@ -64,9 +65,14 @@ def trainModel(
             t0 = time.time()
             for iIter in range(0, settings["nIterEp"]):
                 _model_.zero_grad()  # this should work even for the wrapper.
-                dataDict = load_data(inputs, settings)  #
+                dataDict, iGrid = load_data(inputs, settings)  #
                 results = _model_(dataDict)
-                loss = lossFun(results["yP"], dataDict["yTrain"])
+                if type(lossFun) in [crit.NSELossBatch, crit.NSESqrtLossBatch]:
+                    loss = lossFun(results["yP"][bufftime:, :, :], dataDict["yTrain"], igrid=iGrid)
+                else:
+                    loss = lossFun(results["yP"][bufftime:, :, :], dataDict["yTrain"])
+                    # Additional handling code if needed
+
                 loss.backward()
                 optim.step()
                 lossEp = lossEp + loss.item()

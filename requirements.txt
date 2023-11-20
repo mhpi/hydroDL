@@ -1,9 +1,9 @@
-torch==1.7.1
-matplotlib==3.4.0
-basemap==1.3.0
+torch==2.1.1
+matplotlib==3.8.0
+basemap==1.3.2
 
 numpy
-pandas
+pandas==2.1.1
 scipy
 statsmodels
 tqdm
