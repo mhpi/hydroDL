@@ -10,7 +10,7 @@ import numpy as np
 
 
 class CudnnLstm(nn.Module):
-    def __init__(self, *, inputSize, hiddenSize, dr=0.5, drMethod="drW", gpu=0):
+    def __init__(self, *, inputSize, hiddenSize, dr=0.5, drMethod="drW", gpu=0, seed=42):
         super(CudnnLstm, self).__init__()
         self.inputSize = inputSize
         self.hiddenSize = hiddenSize
@@ -23,6 +23,7 @@ class CudnnLstm(nn.Module):
         self._all_weights = [["w_ih", "w_hh", "b_ih", "b_hh"]]
         self.cuda()
         self.name = "CudnnLstm"
+        self.seed = seed
         self.is_legacy = True
 
         self.reset_mask()
@@ -42,8 +43,8 @@ class CudnnLstm(nn.Module):
         self._all_weights = [["w_ih", "w_hh", "b_ih", "b_hh"]]
 
     def reset_mask(self):
-        self.maskW_ih = createMask(self.w_ih, self.dr)
-        self.maskW_hh = createMask(self.w_hh, self.dr)
+        self.maskW_ih = createMask(self.w_ih, self.dr, self.seed)
+        self.maskW_hh = createMask(self.w_hh, self.dr, self.seed)
 
     def reset_parameters(self):
         stdv = 1.0 / math.sqrt(self.hiddenSize)

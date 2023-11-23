@@ -42,7 +42,7 @@ flow_regime = 0
 # 1: train DI model
 # 0,1: do both base and DI model
 # 2: test trained models
-Action = [0]
+Action = [2]
 gpuid = 6
 torch.cuda.set_device(gpuid)
 
@@ -199,7 +199,7 @@ if 0 in Action:
         ny = yTrain.shape[-1]
         # load model for training
         if torch.cuda.is_available():
-            model = CudnnLstmModel(nx=nx, ny=ny, hiddenSize=HIDDENSIZE, warmUpDay=trainBuff)
+            model = CudnnLstmModel(nx=nx, ny=ny, hiddenSize=HIDDENSIZE)
         else:
             model = CpuLstmModel(nx=nx, ny=ny, hiddenSize=HIDDENSIZE)
         optModel = default.update(optModel, nx=nx, ny=ny)
