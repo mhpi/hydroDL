@@ -1,4 +1,4 @@
-name: mhpihydrodl
+name: hydrodl_new
 channels:
   - pytorch
   - nvidia

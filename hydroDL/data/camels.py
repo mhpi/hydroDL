@@ -646,7 +646,7 @@ class DataframeCamels(Dataframe):
         elif type(subset) is list:
             self.usgsId = np.array(subset)
             crd = np.zeros([len(self.usgsId), 2])
-            ind = np.full(len(self.usgsId), np.nan).astype(int)
+            ind = np.full(len(self.usgsId), -1, dtype=int)
             for ii in range(len(self.usgsId)):
                 tempind = np.where(gageDict["id"] == self.usgsId[ii])
                 ind[ii] = tempind[0][0]

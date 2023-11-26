@@ -46,7 +46,6 @@ Action = [2]
 gpuid = 6
 torch.cuda.set_device(gpuid)
 
-
 # Set hyperparameters
 EPOCH = 300
 BATCH_SIZE = 100
@@ -57,6 +56,7 @@ Ttrain = [19801001, 19951001] # Training period
 forType = 'daymet'
 trainBuff = 365
 loadTrain = True
+subset_train = 'All'  #give the list of basins to train on or else fix 'All' to use all
 
 # Fix random seed
 seedid = 111111
@@ -104,7 +104,7 @@ attrLst = [ 'p_mean','pet_mean','p_seasonality','frac_snow','aridity','high_prec
                'geol_2nd_class', 'glim_2nd_class_frac', 'carbonate_rocks_frac', 'geol_porostiy', 'geol_permeability']
 optData = default.optDataCamels
 optData = default.update(
-    optData, varT=varF, varC=attrLst, tRange=Ttrain, forType=forType)  # Update the training period
+    optData, varT=varF, varC=attrLst, tRange=Ttrain, forType=forType, subset=subset_train)  # Update the training period
 
 # if (interfaceOpt == 1) and (2 not in Action):
 if (interfaceOpt == 1) and (loadTrain is True):
@@ -171,7 +171,7 @@ optTrain = default.update(
 )
 
 # define output folder for model results
-exp_name = f"CAMELSDemo-torch={torch.__version__}"
+exp_name = f"CAMELSDemo"
 exp_disp = "TestRun"
 save_path = os.path.join(
     exp_name,
@@ -199,7 +199,7 @@ if 0 in Action:
         ny = yTrain.shape[-1]
         # load model for training
         if torch.cuda.is_available():
-            model = CudnnLstmModel(nx=nx, ny=ny, hiddenSize=HIDDENSIZE, warmUpDay=trainBuff)
+            model = CudnnLstmModel(nx=nx, ny=ny, hiddenSize=HIDDENSIZE)
         else:
             model = CpuLstmModel(nx=nx, ny=ny, hiddenSize=HIDDENSIZE)
         optModel = default.update(optModel, nx=nx, ny=ny)

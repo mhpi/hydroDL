@@ -2,7 +2,10 @@ import torch
 import torch.nn
 
 
-def createMask(x, dr):
+
+def createMask(x, dr, seed):
+    generator = torch.Generator(device="cuda")
+    generator.manual_seed(seed)
     mask = x.new().resize_as_(x).bernoulli_(1 - dr).div_(1 - dr).detach_()
     # print('droprate='+str(dr))
     return mask
