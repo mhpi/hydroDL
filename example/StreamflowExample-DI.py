@@ -33,7 +33,7 @@ interfaceOpt = 1
 # ==0, the original "pro" version to train jobs based on the defined configuration dictionary.
 # Results are very similar for two options.
 
-flow_regime = 0
+flow_regime = 1
 # 0: low flow expert
 # 1: high flow expert
 
@@ -76,7 +76,7 @@ torch.backends.cudnn.benchmark = False
 # Then 'rootDatabase' here should be 'your/path/to/Camels'
 # You can also define the database directory in hydroDL/__init__.py by modifying pathCamels['DB'] variable
 rootDatabase = os.path.join(os.sep,"scratch", "Camels")  # CAMELS dataset root directory: /scratch/Camels
-camels.initcamels(flow_regime=flow_regime, rootDB=rootDatabase)  # initialize three camels module-scope variables in camels.py: dirDB, gageDict, statDict
+camels.initcamels(flow_regime=flow_regime, rootDB=rootDatabase, forType=forType)  # initialize three camels module-scope variables in camels.py: dirDB, gageDict, statDict
 
 rootOut = os.path.join(
     os.sep, "data", "kas7897", "lstm_tuning", "hydroDL", "output", "rnnStreamflow"
@@ -171,7 +171,7 @@ optTrain = default.update(
 )
 
 # define output folder for model results
-exp_name = f"CAMELSDemo"
+exp_name = f"CAMELSDemo{seedid}"
 exp_disp = "TestRun"
 save_path = os.path.join(
     exp_name,
