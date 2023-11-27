@@ -413,7 +413,7 @@ def calStatbasinnorm(
     return [p10, p90, mean, std]
 
 
-def calStatAll(flow_regime):
+def calStatAll(flow_regime=0, forType='daymet', nt=nt):
     statDict = dict()
     idLst = gageDict["id"]
     # usgs streamflow
@@ -421,7 +421,7 @@ def calStatAll(flow_regime):
     # statDict['usgsFlow'] = calStatgamma(y)
     statDict["usgsFlow"] = calStatbasinnorm(y)
     # forcing
-    x = readForcing(idLst, forcingLst)
+    x = readForcing(idLst, forcingLst, forType, nt)
     for k in range(len(forcingLst)):
         var = forcingLst[k]
         if flow_regime==0:
@@ -622,14 +622,22 @@ else:
     statDict = None
 
 
-def initcamels(flow_regime, rootDB=pathCamels["DB"]):
+def initcamels(flow_regime, forType, rootDB=pathCamels["DB"]):
     # reinitialize module variable
     global dirDB, gageDict, statDict
     dirDB = rootDB
     gageDict = readGageInfo(dirDB)
     statFile = os.path.join(dirDB, "Statistics_basinnorm.json")
     if not os.path.isfile(statFile):
-        calStatAll(flow_regime=flow_regime)
+        if forType in ['maurer', 'maurer_extended']:
+            tRange = [19800101, 20090101]
+        elif forType in ['fused', 'fused_prcp']:
+            tRange = [19801001, 20051001]
+        else:
+            tRange = [19800101, 20150101]
+        tLst = utils.time.tRange2Array(tRange)
+        nt = len(tLst)
+        calStatAll(flow_regime=flow_regime, forType=forType, nt=nt)
     with open(statFile, "r") as fp:
         statDict = json.load(fp)
 
