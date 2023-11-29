@@ -41,9 +41,9 @@ flow_regime = 1
 # 0: train base model without DI
 # 1: train DI model
 # 0,1: do both base and DI model
-# 2: test trained models
-Action = [2]
-gpuid = 6
+# 2: test trained modelsRAPID_output_202311
+Action = [0]
+gpuid = -1
 torch.cuda.set_device(gpuid)
 
 # Set hyperparameters

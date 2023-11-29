@@ -17,7 +17,8 @@ class LSTMcell_tied(torch.nn.Module):
         mode="train",
         dr=0.5,
         drMethod="drX+drW+drC",
-        gpu=1
+        gpu=1,
+        seed=42
     ):
         super(LSTMcell_tied, self).__init__()
 
@@ -26,7 +27,7 @@ class LSTMcell_tied(torch.nn.Module):
         self.dr = dr
         self.name = "LSTMcell_tied"
         self.is_legacy = True
-
+        self.seed=seed
         self.w_ih = Parameter(torch.Tensor(hiddenSize * 4, inputSize))
         self.w_hh = Parameter(torch.Tensor(hiddenSize * 4, hiddenSize))
         self.b_ih = Parameter(torch.Tensor(hiddenSize * 4))
@@ -55,11 +56,11 @@ class LSTMcell_tied(torch.nn.Module):
             weight.data.uniform_(-stdv, stdv)
 
     def reset_mask(self, x, h, c):
-        self.maskX = createMask(x, self.dr)
-        self.maskH = createMask(h, self.dr)
-        self.maskC = createMask(c, self.dr)
-        self.maskW_ih = createMask(self.w_ih, self.dr)
-        self.maskW_hh = createMask(self.w_hh, self.dr)
+        self.maskX = createMask(x, self.dr, self.seed)
+        self.maskH = createMask(h, self.dr, self.seed)
+        self.maskC = createMask(c, self.dr, self.seed)
+        self.maskW_ih = createMask(self.w_ih, self.dr, self.seed)
+        self.maskW_hh = createMask(self.w_hh, self.dr, self.seed)
 
     def forward(self, x, hidden, *, resetMask=True, doDropMC=False):
         if self.dr > 0 and (doDropMC is True or self.training is True):

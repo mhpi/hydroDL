@@ -10,12 +10,13 @@ import numpy as np
 
 class LSTMcell_untied(torch.nn.Module):
     def __init__(
-        self, *, inputSize, hiddenSize, train=True, dr=0.5, drMethod="gal+sem", gpu=0
+        self, *, inputSize, hiddenSize, train=True, dr=0.5, drMethod="gal+sem", gpu=0, seed=42
     ):
         super(LSTMcell_untied, self).__init__()
         self.inputSize = inputSize
         self.hiddenSize = inputSize
         self.dr = dr
+        self.seed = seed
         self.name = "LSTMcell_untied"
         self.is_legacy = True
 
@@ -50,26 +51,26 @@ class LSTMcell_untied(torch.nn.Module):
             w.data.uniform_(-std, std)
 
     def init_mask(self, x, h, c):
-        self.maskX_i = createMask(x, self.dr)
-        self.maskX_f = createMask(x, self.dr)
-        self.maskX_c = createMask(x, self.dr)
-        self.maskX_o = createMask(x, self.dr)
+        self.maskX_i = createMask(x, self.dr, self.seed)
+        self.maskX_f = createMask(x, self.dr, self.seed)
+        self.maskX_c = createMask(x, self.dr, self.seed)
+        self.maskX_o = createMask(x, self.dr, self.seed)
 
-        self.maskH_i = createMask(h, self.dr)
-        self.maskH_f = createMask(h, self.dr)
-        self.maskH_c = createMask(h, self.dr)
-        self.maskH_o = createMask(h, self.dr)
+        self.maskH_i = createMask(h, self.dr, self.seed)
+        self.maskH_f = createMask(h, self.dr, self.seed)
+        self.maskH_c = createMask(h, self.dr, self.seed)
+        self.maskH_o = createMask(h, self.dr, self.seed)
 
-        self.maskC = createMask(c, self.dr)
+        self.maskC = createMask(c, self.dr, self.seed)
 
-        self.maskW_xi = createMask(self.w_xi, self.dr)
-        self.maskW_xf = createMask(self.w_xf, self.dr)
-        self.maskW_xc = createMask(self.w_xc, self.dr)
-        self.maskW_xo = createMask(self.w_xo, self.dr)
-        self.maskW_hi = createMask(self.w_hi, self.dr)
-        self.maskW_hf = createMask(self.w_hf, self.dr)
-        self.maskW_hc = createMask(self.w_hc, self.dr)
-        self.maskW_ho = createMask(self.w_ho, self.dr)
+        self.maskW_xi = createMask(self.w_xi, self.dr, self.seed)
+        self.maskW_xf = createMask(self.w_xf, self.dr, self.seed)
+        self.maskW_xc = createMask(self.w_xc, self.dr, self.seed)
+        self.maskW_xo = createMask(self.w_xo, self.dr, self.seed)
+        self.maskW_hi = createMask(self.w_hi, self.dr, self.seed)
+        self.maskW_hf = createMask(self.w_hf, self.dr, self.seed)
+        self.maskW_hc = createMask(self.w_hc, self.dr, self.seed)
+        self.maskW_ho = createMask(self.w_ho, self.dr, self.seed)
 
     def forward(self, x, hidden):
         h0, c0 = hidden
