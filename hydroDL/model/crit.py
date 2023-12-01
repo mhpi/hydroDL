@@ -192,7 +192,7 @@ class NSELosstest(torch.nn.Module):
 class NSELossBatch(torch.nn.Module):
     # Same as Fredrick 2019, batch NSE loss
     # stdarray: the standard deviation of the runoff for all basins
-    def __init__(self, stdarray,  eps=0.1,device = torch.cuda.current_device()):
+    def __init__(self, stdarray,  eps=0.1,device = 'cpu'):
         super(NSELossBatch, self).__init__()
         self.std = stdarray
         self.eps = eps
@@ -222,7 +222,7 @@ class NSELossBatch(torch.nn.Module):
 class NSESqrtLossBatch(torch.nn.Module):
     # Same as Fredrick 2019, batch NSE loss, use RMSE and STD instead
     # stdarray: the standard deviation of the runoff for all basins
-    def __init__(self, stdarray, eps=0.1,device = torch.cuda.current_device()):
+    def __init__(self, stdarray, eps=0.1,device = 'cpu'):
         super(NSESqrtLossBatch, self).__init__()
         self.std = stdarray
         self.eps = eps
