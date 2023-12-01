@@ -202,8 +202,7 @@ class NSELossBatch(torch.nn.Module):
         nt = target.shape[0]
         stdse = np.tile(self.std[igrid].T, (nt, 1))
 
-        tdbatch = torch.tensor(stdse, requires_grad=False).float().to(device)
-
+        stdbatch = torch.tensor(stdse, requires_grad=False).float().to(self.device)
         p0 = output[:, :, 0]   # dim: Time*Gage
         t0 = target[:, :, 0]
         mask = t0 == t0
@@ -232,7 +231,7 @@ class NSESqrtLossBatch(torch.nn.Module):
     def forward(self, output, target, igrid):
         nt = target.shape[0]
         stdse = np.tile(self.std[igrid], (nt, 1))
-        tdbatch = torch.tensor(stdse, requires_grad=False).float().to(device)
+        stdbatch = torch.tensor(stdse, requires_grad=False).float().to(self.device)
         p0 = output[:, :, 0]   # dim: Time*Gage
         t0 = target[:, :, 0]
         mask = t0 == t0
