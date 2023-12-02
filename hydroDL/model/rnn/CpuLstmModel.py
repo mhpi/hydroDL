@@ -33,10 +33,9 @@ class CpuLstmModel(torch.nn.Module):
         # return out
         results = {}
         x = inputs
-#         x = inputs["xTrain"]
         nt, ngrid, nx = x.shape
         yt = torch.zeros(ngrid, 1)
-        results["yP"] = torch.zeros(nt, ngrid, self.ny)
+        results = torch.zeros(nt, ngrid, self.ny)
         ht = None
         ct = None
         resetMask = True
@@ -46,5 +45,5 @@ class CpuLstmModel(torch.nn.Module):
             ht, ct = self.lstm(x0, hidden=(ht, ct), resetMask=resetMask)
             yt = self.linearOut(ht)
             resetMask = False
-            results["yP"][t, :, :] = yt
+            results[t, :, :] = yt
         return results
