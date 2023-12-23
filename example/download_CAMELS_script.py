@@ -11,6 +11,26 @@ train_c (constant data, e.g. soil properties, land cover ...): [pixels, features
 train_y (target variable, e.g. soil moisture, streamflow ...): [pixels, time, 1]
 val_x, val_c, val_y
 The variables to download, training and test time periods, etc., are defined in the last block of this file. Customize as you wish
+
+
+
+**simple directions to get set up with Python on your local computer and run this script: 
+Download/install Miniconda (mini version of Python package manager, Anaconda)
+save this script file in a new folder
+optional** download file from https://gdex.ucar.edu/dataset/camels/file/basin_timeseries_v1p2_metForcing_obsFlow.zip and save to folder (otherwise will autodownload via the script but may fail)
+open anaconda prompt (miniconda)
+navigate to the folder with your script: cd prints current directory, dir prints directory contents, cd foldername moves your current directory into the named folder
+
+then input the following commands into the command line interface (anaconda prompt):
+conda create -n test_hydrodl_tutorial python=3.9 ##Important: We are specifying Python 3.9 due to a number of code dependencies and packages that are not yet fully up to date with the most recent versions of python
+#(confirm creation with y)
+conda activate test_hydrodl_tutorial
+conda install requests tqdm pytorch pandas 
+python download_CAMELS_script.py
+
+If all goes well, you will be told files "training_file" and "validation_file" were created in subfolder hydroDLpack. 
+Upload these files manually to Colab and make sure they are under the folder "hydroDLpack" there, then continue with the tutorial on colab.
+
 """
 
 
@@ -26,8 +46,9 @@ import zipfile
 from tqdm import tqdm
 import pickle
 
-rootDatabase = r"E:\Downloads\CAMELS"
+rootDatabase = r"C:\Users\Kathryn\Downloads\CAMELS"
 os.chdir(rootDatabase)
+#import hydroDL
 
 """### git repo"""
 def is_running_in_colab():
@@ -37,7 +58,7 @@ def is_running_in_colab():
     except ImportError:
         return False
 
-sys.path.append('../')
+sys.path.append('..'+os.path.sep)
 
 def on_rm_error(func, path, exc_info):
     if not os.access(path, os.W_OK):
@@ -49,10 +70,6 @@ def on_rm_error(func, path, exc_info):
 if os.path.exists('hydroDLpack'):
     shutil.rmtree('hydroDLpack', onerror=on_rm_error)
 subprocess.run(['git', 'clone', 'https://github.com/mhpi/hydroDL.git', 'hydroDLpack'], check=True)
-os.chdir('hydroDLpack')
-os.system("conda develop .")
-# subprocess.run('conda', 'develop', '.')
-
 
 def downloadCAMELS():
   if platform.system() == 'Windows':
@@ -101,8 +118,8 @@ def downloadCAMELS():
     main_dataset_dest = os.path.join(base_dir, 'basin_timeseries_v1p2_metForcing_obsFlow.zip')
 
     if not check_file_size(main_dataset_dest, 3326783): # true size is 3,326,784 kb
-        print("Trying to download to "+main_dataset_dest)
-        print("You can also use your browser to directly download the data to this location so you can proceed ")
+        print("Trying to download "+main_dataset_url+" to "+main_dataset_dest)
+        print("If program download stalls, you can also use your browser to directly download the data to this location so you can proceed. This code checks file size -- if file is intact, it will not download.")
         download_file(main_dataset_url, main_dataset_dest)
     else:
         print(main_dataset_dest+" already exists and is larger than 3,326,783 KB. Skipping download.")
@@ -150,6 +167,11 @@ def extractCAMELS(Ttrain,attrLst,varF,camels,forType='daymet',flow_regime=1,subs
 # you shouldn't need to run this if you are loading directly from pickle file
 downloadCAMELS()
 
+
+os.chdir('hydroDLpack')
+sys.path.append(os.path.join(rootDatabase, 'hydroDLpack'))
+os.system("conda develop .")
+
 import os
 import hydroDL
 from hydroDL.master import default
@@ -181,4 +203,4 @@ attrLst = [ 'p_mean','pet_mean', 'p_seasonality', 'frac_snow', 'aridity', 'high_
 camels.initcamels(flow_regime=flow_regime, forType=forType, rootDB=rootDatabase)
 train_x, train_y, train_c = extractCAMELS(Ttrain,attrLst,varF,camels,forType='daymet',flow_regime=1,subset_train="All",file_path=train_file)
 val_x, val_y, val_c = extractCAMELS(valid_date,attrLst,varF,camels,forType='daymet',flow_regime=1,subset_train="All",file_path=validation_file)
-
+print(f"written files to: "+rootDatabase+os.path.sep+"hydroDLpack"+os.path.sep+train_file+" and "+validation_file)
