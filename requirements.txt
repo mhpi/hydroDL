@@ -1,9 +1,9 @@
-torch==1.13.1
-matplotlib
+torch==2.1.1
+matplotlib==3.8.0
 
 cartopy
 numpy
-pandas
+pandas==2.1.1
 scipy
 statsmodels
 tqdm

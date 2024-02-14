@@ -51,6 +51,7 @@ optDataCamels = OrderedDict(
     fdcopt=False,
     SAOpt=None,
     addVar=None,
+    forType='nldas'
 )
 # optDataGages = OrderedDict(
 #     name='hydroDL.data.gages.DataframeGages',
@@ -70,7 +71,7 @@ optDataCamels = OrderedDict(
 #     fdcopt=False,
 #     includeLanduse=False,
 #     includeWateruse=False)
-optTrainCamels = OrderedDict(miniBatch=[100, 200], nEpoch=100, saveEpoch=50, seed=None)
+optTrainCamels = OrderedDict(miniBatch=[100, 200], nEpoch=100, saveEpoch=50, seed=None, trainBuff=0)
 """ model options """
 optLstm = OrderedDict(
     name="hydroDL.model.rnn.CudnnLstmModel",
@@ -136,6 +137,7 @@ optInvLstm = OrderedDict(
 optLossRMSE = OrderedDict(name="hydroDL.model.crit.RmseLoss", prior="gauss")
 optLossSigma = OrderedDict(name="hydroDL.model.crit.SigmaLoss", prior="gauss")
 optLossNSE = OrderedDict(name="hydroDL.model.crit.NSELosstest", prior="gauss")
+optLossNSEBatch = OrderedDict(name="hydroDL.model.crit.NSELossBatch", prior="gauss")
 optLossMSE = OrderedDict(name="hydroDL.model.crit.MSELoss", prior="gauss")
 optLossTrend = OrderedDict(name="hydroDL.model.crit.ModifyTrend1", prior="gauss")
 optLossRMSECNN = OrderedDict(name="hydroDL.model.crit.RmseLossCNN", prior="gauss")

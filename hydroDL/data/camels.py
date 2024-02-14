@@ -61,7 +61,7 @@ def readGageInfo(dirDB):
     fieldLst = ["huc", "id", "name", "lat", "lon", "area"]
     out = dict()
     for s in fieldLst:
-        if s is "name":
+        if s == "name":
             out[s] = data[fieldLst.index(s)].values.tolist()
         else:
             out[s] = data[fieldLst.index(s)].values
@@ -114,9 +114,24 @@ def readUsgs(usgsIdLst):
         y[k, :] = dataObs
     print("read usgs streamflow", time.time() - t0)
     return y
+def basinTrans(x, gageid):
+    if type(gageid) is str:
+        if gageid == "All":
+            gageid = gageDict["id"]
+    nd = len(x.shape)
+    basinarea = readAttr(gageid, ["area_gages2"])
+    # meanprep = readAttr(gageid, ['q_mean'])
+    if nd == 3 and x.shape[2] == 1:
+        x = x[:, :, 0]  # unsqueeze the original 3 dimension matrix
+    temparea = np.tile(basinarea, (1, x.shape[1]))
+    flow = (
+            (x * 3600 * 24) * 1000
+            / (temparea * (10 ** 6))
+    )
+    return flow
 
 
-def readForcingGage(usgsId, varLst=forcingLst, *, dataset="nldas"):
+def readForcingGage(usgsId, varLst=forcingLst, *, dataset="nldas", nt):
     # dataset = daymet or maurer or nldas or nldas_extedned with tmaxtmin
     forcingLst = ["dayl", "prcp", "srad", "swe", "tmax", "tmin", "vp"]
     ind = np.argwhere(gageDict["id"] == usgsId)[0][0]
@@ -128,9 +143,9 @@ def readForcingGage(usgsId, varLst=forcingLst, *, dataset="nldas"):
         "basin_dataset_public_v1p2",
         "basin_mean_forcing",
     )
-    if dataset is "daymet":
+    if dataset == "daymet":
         tempS = "cida"
-    elif dataset is "nldas_extended":
+    elif dataset == "nldas_extended":
         tempS = "nldas"
     else:
         tempS = dataset
@@ -150,15 +165,17 @@ def readForcingGage(usgsId, varLst=forcingLst, *, dataset="nldas"):
     return out
 
 
-def readForcing(usgsIdLst, varLst):
+def readForcing(usgsIdLst, varLst, forData, nt):
     t0 = time.time()
     x = np.empty([len(usgsIdLst), nt, len(varLst)])
     for k in range(len(usgsIdLst)):
-        data = readForcingGage(usgsIdLst[k], varLst)
+        data = readForcingGage(usgsIdLst[k], varLst, dataset=forData, nt=nt)
         x[k, :, :] = data
     print("read usgs streamflow", time.time() - t0)
     return x
 
+def is_really_string(series):
+    return series.dtype == 'O' and isinstance(series.iloc[0], str)
 
 def readAttrAll(*, saveDict=False):
     dataFolder = os.path.join(dirDB, "camels_attributes_v2.0", "camels_attributes_v2.0")
@@ -178,7 +195,7 @@ def readAttrAll(*, saveDict=False):
         nGage = len(gageDict["id"])
         outTemp = np.full([nGage, len(varLstTemp)], np.nan)
         for field in varLstTemp:
-            if is_string_dtype(dataTemp[field]):
+            if is_really_string(dataTemp[field]):
                 value, ref = pd.factorize(dataTemp[field], sort=True)
                 outTemp[:, k] = value
                 fDict[field] = ref.tolist()
@@ -203,10 +220,17 @@ def readAttr(usgsIdLst, varLst):
     for var in varLst:
         indVar.append(varLstAll.index(var))
     idLstAll = gageDict["id"]
-    indGrid = np.full(usgsIdLst.size, np.nan).astype(int)
-    for ii in range(usgsIdLst.size):
-        tempind = np.where(idLstAll == usgsIdLst[ii])
-        indGrid[ii] = tempind[0][0]
+    try:
+        indGrid = np.full(usgsIdLst.size, -1, dtype=int)
+        for ii in range(usgsIdLst.size):
+            tempind = np.where(idLstAll == usgsIdLst[ii])
+            indGrid[ii] = tempind[0][0]
+    except:
+        indGrid = np.full(len(usgsIdLst), -1, dtype=int)
+        for ii in range(len(usgsIdLst)):
+            tempind = np.where(idLstAll==usgsIdLst[ii])
+            indGrid[ii] = tempind[0][0]
+
     temp = attrAll[indGrid, :]
     out = temp[:, indVar]
     # previous code depreciated potential bug exists for repeated gages
@@ -339,7 +363,7 @@ def readCSV(dataDir, dataRange, varLst, usgsIdLst):
 
 def calStat(x):
     a = x.flatten()
-    b = a[~np.isnan(a)]  # kick out Nan
+    b = a[~np.isnan(a)]
     p10 = np.percentile(b, 10).astype(float)
     p90 = np.percentile(b, 90).astype(float)
     mean = np.mean(b).astype(float)
@@ -389,7 +413,7 @@ def calStatbasinnorm(
     return [p10, p90, mean, std]
 
 
-def calStatAll():
+def calStatAll(flow_regime=0, forType='daymet', nt=nt):
     statDict = dict()
     idLst = gageDict["id"]
     # usgs streamflow
@@ -397,12 +421,15 @@ def calStatAll():
     # statDict['usgsFlow'] = calStatgamma(y)
     statDict["usgsFlow"] = calStatbasinnorm(y)
     # forcing
-    x = readForcing(idLst, forcingLst)
+    x = readForcing(idLst, forcingLst, forType, nt)
     for k in range(len(forcingLst)):
         var = forcingLst[k]
-        if var == "prcp":
-            statDict[var] = calStatgamma(x[:, :, k])
-        else:
+        if flow_regime==0:
+            if var == "prcp":
+                statDict[var] = calStatgamma(x[:, :, k])
+            else:
+                statDict[var] = calStat(x[:, :, k])
+        elif flow_regime==1:
             statDict[var] = calStat(x[:, :, k])
     # const attribute
     attrData, attrLst = readAttrAll()
@@ -414,15 +441,18 @@ def calStatAll():
         json.dump(statDict, fp, indent=4)
 
 
-def getStatDic(attrLst=None, attrdata=None, seriesLst=None, seriesdata=None):
+def getStatDic(flow_regime, attrLst=None, attrdata=None, seriesLst=None, seriesdata=None):
     statDict = dict()
     # series data
     if seriesLst is not None:
         for k in range(len(seriesLst)):
             var = seriesLst[k]
-            if var in ["prcp", "Precip", "runoff", "Runoff", "Runofferror"]:
-                statDict[var] = calStatgamma(seriesdata[:, :, k])
-            else:
+            if flow_regime==0:
+                if var in ["prcp", "Precip", "runoff", "Runoff", "Runofferror"]:
+                    statDict[var] = calStatgamma(seriesdata[:, :, k])
+                else:
+                    statDict[var] = calStat(seriesdata[:, :, k])
+            elif flow_regime==1:
                 statDict[var] = calStat(seriesdata[:, :, k])
     # const attribute
     if attrLst is not None:
@@ -432,7 +462,7 @@ def getStatDic(attrLst=None, attrdata=None, seriesLst=None, seriesdata=None):
     return statDict
 
 
-def transNorm(x, varLst, *, toNorm):
+def transNorm(x, varLst, *, toNorm, flow_regime):
     if type(varLst) is str:
         varLst = [varLst]
     out = np.zeros(x.shape)
@@ -441,30 +471,34 @@ def transNorm(x, varLst, *, toNorm):
         stat = statDict[var]
         if toNorm is True:
             if len(x.shape) == 3:
-                if var == "prcp" or var == "usgsFlow":
-                    x[:, :, k] = np.log10(np.sqrt(x[:, :, k]) + 0.1)
+                if flow_regime==0:
+                    if var == "prcp" or var == "usgsFlow":
+                        x[:, :, k] = np.log10(np.sqrt(x[:, :, k]) + 0.1)
                 out[:, :, k] = (x[:, :, k] - stat[2]) / stat[3]
             elif len(x.shape) == 2:
-                if var == "prcp" or var == "usgsFlow":
-                    x[:, k] = np.log10(np.sqrt(x[:, k]) + 0.1)
+                if flow_regime==0:
+                    if var == "prcp" or var == "usgsFlow":
+                        x[:, k] = np.log10(np.sqrt(x[:, k]) + 0.1)
                 out[:, k] = (x[:, k] - stat[2]) / stat[3]
         else:
             if len(x.shape) == 3:
                 out[:, :, k] = x[:, :, k] * stat[3] + stat[2]
-                if var == "prcp" or var == "usgsFlow":
-                    temptrans = np.power(10, out[:, :, k]) - 0.1
-                    temptrans[temptrans < 0] = 0  # set negative as zero
-                    out[:, :, k] = (temptrans) ** 2
+                if flow_regime==0:
+                    if var == "prcp" or var == "usgsFlow":
+                        temptrans = np.power(10, out[:, :, k]) - 0.1
+                        temptrans[temptrans < 0] = 0  # set negative as zero
+                        out[:, :, k] = (temptrans) ** 2
             elif len(x.shape) == 2:
                 out[:, k] = x[:, k] * stat[3] + stat[2]
-                if var == "prcp" or var == "usgsFlow":
-                    temptrans = np.power(10, out[:, k]) - 0.1
-                    temptrans[temptrans < 0] = 0
-                    out[:, k] = (temptrans) ** 2
+                if flow_regime==0:
+                    if var == "prcp" or var == "usgsFlow":
+                        temptrans = np.power(10, out[:, k]) - 0.1
+                        temptrans[temptrans < 0] = 0
+                        out[:, k] = (temptrans) ** 2
     return out
 
 
-def transNormbyDic(x, varLst, staDic, *, toNorm):
+def transNormbyDic(x, varLst, staDic, *, toNorm, flow_regime):
     if type(varLst) is str:
         varLst = [varLst]
     out = np.zeros(x.shape)
@@ -473,58 +507,67 @@ def transNormbyDic(x, varLst, staDic, *, toNorm):
         stat = staDic[var]
         if toNorm is True:
             if len(x.shape) == 3:
-                if var in [
-                    "prcp",
-                    "usgsFlow",
-                    "Precip",
-                    "runoff",
-                    "Runoff",
-                    "Runofferror",
-                ]:
-                    temp = np.log10(np.sqrt(x[:, :, k]) + 0.1)
-                    out[:, :, k] = (temp - stat[2]) / stat[3]
-                else:
+                if flow_regime==0:
+                    if var in [
+                        "prcp",
+                        "usgsFlow",
+                        "Precip",
+                        "runoff",
+                        "Runoff",
+                        "Runofferror",
+                    ]:
+                        temp = np.log10(np.sqrt(x[:, :, k]) + 0.1)
+                        out[:, :, k] = (temp - stat[2]) / stat[3]
+                    else:
+                        out[:, :, k] = (x[:, :, k] - stat[2]) / stat[3]
+                elif flow_regime==1:
                     out[:, :, k] = (x[:, :, k] - stat[2]) / stat[3]
             elif len(x.shape) == 2:
-                if var in [
-                    "prcp",
-                    "usgsFlow",
-                    "Precip",
-                    "runoff",
-                    "Runoff",
-                    "Runofferror",
-                ]:
-                    temp = np.log10(np.sqrt(x[:, k]) + 0.1)
-                    out[:, k] = (temp - stat[2]) / stat[3]
-                else:
+                if flow_regime==0:
+                    if var in [
+                        "prcp",
+                        "usgsFlow",
+                        "Precip",
+                        "runoff",
+                        "Runoff",
+                        "Runofferror",
+                    ]:
+                        temp = np.log10(np.sqrt(x[:, k]) + 0.1)
+                        out[:, k] = (temp - stat[2]) / stat[3]
+                    else:
+                        out[:, k] = (x[:, k] - stat[2]) / stat[3]
+                elif flow_regime==1:
                     out[:, k] = (x[:, k] - stat[2]) / stat[3]
+
         else:
             if len(x.shape) == 3:
                 out[:, :, k] = x[:, :, k] * stat[3] + stat[2]
-                if var in [
-                    "prcp",
-                    "usgsFlow",
-                    "Precip",
-                    "runoff",
-                    "Runoff",
-                    "Runofferror",
-                ]:
-                    temptrans = np.power(10, out[:, :, k]) - 0.1
-                    temptrans[temptrans < 0] = 0  # set negative as zero
-                    out[:, :, k] = (temptrans) ** 2
+                if flow_regime==0:
+                    if var in [
+                        "prcp",
+                        "usgsFlow",
+                        "Precip",
+                        "runoff",
+                        "Runoff",
+                        "Runofferror",
+                    ]:
+                        temptrans = np.power(10, out[:, :, k]) - 0.1
+                        temptrans[temptrans < 0] = 0  # set negative as zero
+                        out[:, :, k] = (temptrans) ** 2
             elif len(x.shape) == 2:
                 out[:, k] = x[:, k] * stat[3] + stat[2]
-                if var in [
-                    "prcp",
-                    "usgsFlow",
-                    "Precip",
-                    "runoff",
-                    "Runoff",
-                    "Runofferror",
-                ]:
-                    temptrans = np.power(10, out[:, k]) - 0.1
-                    temptrans[temptrans < 0] = 0
-                    out[:, k] = (temptrans) ** 2
+                if flow_regime==0:
+                    if var in [
+                        "prcp",
+                        "usgsFlow",
+                        "Precip",
+                        "runoff",
+                        "Runoff",
+                        "Runofferror",
+                    ]:
+                        temptrans = np.power(10, out[:, k]) - 0.1
+                        temptrans[temptrans < 0] = 0
+                        out[:, k] = (temptrans) ** 2
     return out
 
 
@@ -558,7 +601,7 @@ def basinNorm(x, gageid, toNorm):
 
 
 def createSubsetAll(opt, **kw):
-    if opt is "all":
+    if opt == "all":
         idLst = gageDict["id"]
         subsetFile = os.path.join(dirDB, "Subset", "all.csv")
         np.savetxt(subsetFile, idLst, delimiter=",", fmt="%d")
@@ -579,20 +622,28 @@ else:
     statDict = None
 
 
-def initcamels(rootDB=pathCamels["DB"]):
+def initcamels(flow_regime, forType, rootDB=pathCamels["DB"]):
     # reinitialize module variable
     global dirDB, gageDict, statDict
     dirDB = rootDB
     gageDict = readGageInfo(dirDB)
     statFile = os.path.join(dirDB, "Statistics_basinnorm.json")
     if not os.path.isfile(statFile):
-        calStatAll()
+        if forType in ['maurer', 'maurer_extended']:
+            tRange = [19800101, 20090101]
+        elif forType in ['fused', 'fused_prcp']:
+            tRange = [19801001, 20051001]
+        else:
+            tRange = [19800101, 20150101]
+        tLst = utils.time.tRange2Array(tRange)
+        nt = len(tLst)
+        calStatAll(flow_regime=flow_regime, forType=forType, nt=nt)
     with open(statFile, "r") as fp:
         statDict = json.load(fp)
 
 
 class DataframeCamels(Dataframe):
-    def __init__(self, *, subset="All", tRange):
+    def __init__(self, *, subset="All", tRange, forType='nldas'):
         self.subset = subset
         if subset == "All":  # change to read subset later
             self.usgsId = gageDict["id"]
@@ -603,7 +654,7 @@ class DataframeCamels(Dataframe):
         elif type(subset) is list:
             self.usgsId = np.array(subset)
             crd = np.zeros([len(self.usgsId), 2])
-            ind = np.full(len(self.usgsId), np.nan).astype(int)
+            ind = np.full(len(self.usgsId), -1, dtype=int)
             for ii in range(len(self.usgsId)):
                 tempind = np.where(gageDict["id"] == self.usgsId[ii])
                 ind[ii] = tempind[0][0]
@@ -613,6 +664,8 @@ class DataframeCamels(Dataframe):
         else:
             raise Exception("The format of subset is not correct!")
         self.time = tRange2Array(tRange)
+        self.forType = forType
+
 
     def getGeo(self):
         return self.crd
@@ -620,7 +673,7 @@ class DataframeCamels(Dataframe):
     def getT(self):
         return self.time
 
-    def getDataObs(self, *, doNorm=True, rmNan=True, basinnorm=True):
+    def getDataObs(self, *, doNorm=True, rmNan=True, basinnorm=True, flow_regime):
         data = readUsgs(self.usgsId)
         if basinnorm is True:
             data = basinNorm(data, gageid=self.usgsId, toNorm=True)
@@ -628,26 +681,43 @@ class DataframeCamels(Dataframe):
         C, ind1, ind2 = np.intersect1d(self.time, tLstobs, return_indices=True)
         data = data[:, ind2, :]
         if doNorm is True:
-            data = transNorm(data, "usgsFlow", toNorm=True)
+            data = transNorm(data, "usgsFlow", toNorm=True, flow_regime=flow_regime)
         if rmNan is True:
             data[np.where(np.isnan(data))] = 0
             # data[np.where(np.isnan(data))] = -99
         return data
 
-    def getDataTs(self, *, varLst=forcingLst, doNorm=True, rmNan=True):
+    def getDataTs(self, *, varLst=forcingLst, doNorm=True, rmNan=True, flow_regime):
         if type(varLst) is str:
             varLst = [varLst]
         # read ts forcing
-        data = readForcing(self.usgsId, varLst)  # data:[gage*day*variable]
+        if self.forType in ['maurer', 'maurer_extended']:
+            tRange = [19800101, 20090101]
+        elif self.forType in ['fused', 'fused_prcp']:
+            tRange = [19801001, 20051001]
+        else:
+            tRange = [19800101, 20150101]
+        tLst = utils.time.tRange2Array(tRange)
+        nt = len(tLst)
+        if self.forType in ['daymet', 'fused_prcp'] and 'tmean' in varLst:
+            print('daymet tmean was used!')
+            tmeanind = varLst.index('tmean')
+            varLstex = [ivar for ivar in varLst if ivar != 'tmean']
+            data = readForcing(self.usgsId, varLstex, forData=self.forType, nt=nt) # data:[gage*day*variable]
+            tmaxmin = readForcing(self.usgsId, ['tmax','tmin'], forData=self.forType, nt=nt)
+            tmeandata = np.mean(tmaxmin, axis=2, keepdims=True)
+            data = np.concatenate((data[:,:,0:tmeanind], tmeandata, data[:,:,tmeanind:]), axis=2)
+        else:
+            data = readForcing(self.usgsId, varLst,forData=self.forType, nt=nt)  # data:[gage*day*variable]
         C, ind1, ind2 = np.intersect1d(self.time, tLst, return_indices=True)
         data = data[:, ind2, :]
         if doNorm is True:
-            data = transNorm(data, varLst, toNorm=True)
+            data = transNorm(data, varLst, toNorm=True, flow_regime=flow_regime)
         if rmNan is True:
             data[np.where(np.isnan(data))] = 0
         return data
 
-    def getDataConst(self, *, varLst=attrLstSel, doNorm=True, rmNan=True, SAOpt=None):
+    def getDataConst(self, *, varLst=attrLstSel, doNorm=True, rmNan=True, SAOpt=None, flow_regime):
         if type(varLst) is str:
             varLst = [varLst]
         data = readAttr(self.usgsId, varLst)
@@ -657,7 +727,7 @@ class DataframeCamels(Dataframe):
             indVar = varLst.index(SAname)
             data[:, indVar] = data[:, indVar] * (1 + SAfac)
         if doNorm is True:
-            data = transNorm(data, varLst, toNorm=True)
+            data = transNorm(data, varLst, toNorm=True, flow_regime=flow_regime)
         if rmNan is True:
             data[np.where(np.isnan(data))] = 0
         return data

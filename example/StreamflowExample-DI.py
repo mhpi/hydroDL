@@ -5,13 +5,14 @@ from hydroDL import master, utils
 from hydroDL.master import default
 from hydroDL.master.master import loadModel, wrapMaster, writeMasterFile
 from hydroDL.master.master import readMasterFile
-from hydroDL.post import plot, stat
+# from hydroDL.post import plot, stat
+from hydroDL.post import stat, plot
 import matplotlib.pyplot as plt
 from hydroDL.data import camels
 from hydroDL.model.test import testModel
 from hydroDL.model.train import trainModel
 from hydroDL.model.rnn import CudnnLstmModel, CpuLstmModel
-from hydroDL.model.crit import RmseLoss
+from hydroDL.model.crit import RmseLoss, NSELossBatch
 
 import numpy as np
 import pandas as pd
@@ -21,6 +22,10 @@ import random
 import datetime as dt
 import json
 
+#checking version of torch and cuda, and checking if cuda is available
+print(torch.__version__)
+print(torch.cuda.is_available())
+print(torch.version.cuda)
 # Options for different interface
 interfaceOpt = 1
 # ==1 default, the recommended and more interpretable version with clear data and training flow. We improved the
@@ -28,14 +33,19 @@ interfaceOpt = 1
 # ==0, the original "pro" version to train jobs based on the defined configuration dictionary.
 # Results are very similar for two options.
 
+flow_regime = 1
+# 0: low flow expert
+# 1: high flow expert
+
 # Options for training and testing
 # 0: train base model without DI
 # 1: train DI model
 # 0,1: do both base and DI model
-# 2: test trained models
-Action = [0,1]
-# gpuid = 0
-# torch.cuda.set_device(gpuid)
+# 2: test trained modelsRAPID_output_202311
+Action = [0]
+gpuid = -1
+torch.cuda.set_device(gpuid)
+device = torch.cuda.current_device() if torch.cuda.is_available() else torch.device("cpu" )
 
 # Set hyperparameters
 EPOCH = 300
@@ -43,7 +53,11 @@ BATCH_SIZE = 100
 RHO = 365
 HIDDENSIZE = 256
 saveEPOCH = 1  # save model for every "saveEPOCH" epochs
-Ttrain = [19851001, 19951001]  # Training period
+Ttrain = [19801001, 19951001] # Training period
+forType = 'daymet'
+trainBuff = 365
+loadTrain = True
+subset_train = 'All'  #give the list of basins to train on or else fix 'All' to use all
 
 # Fix random seed
 seedid = 111111
@@ -62,60 +76,70 @@ torch.backends.cudnn.benchmark = False
 # 'your/path/to/Camels/basin_timeseries_v1p2_metForcing_obsFlow' and 'your/path/to/Camels/camels_attributes_v2.0'
 # Then 'rootDatabase' here should be 'your/path/to/Camels'
 # You can also define the database directory in hydroDL/__init__.py by modifying pathCamels['DB'] variable
-rootDatabase = os.path.join(
-    os.path.sep, "scratch", "Camels"
-)  # CAMELS dataset root directory: /scratch/Camels
-camels.initcamels(
-    rootDatabase
-)  # initialize three camels module-scope variables in camels.py: dirDB, gageDict, statDict
+rootDatabase = os.path.join(os.sep,"scratch", "Camels")  # CAMELS dataset root directory: /scratch/Camels
+camels.initcamels(flow_regime=flow_regime, rootDB=rootDatabase, forType=forType)  # initialize three camels module-scope variables in camels.py: dirDB, gageDict, statDict
 
 rootOut = os.path.join(
-    os.path.sep, "data", "rnnStreamflow"
-)  # Root directory to save training results: /data/rnnStreamflow
-rootOut = "./output/streamflow/"  # Root directory to save training results: /data/rnnStreamflow
+    os.sep, "data", "kas7897", "lstm_tuning", "hydroDL", "output", "rnnStreamflow"
+)
+# rootOut = os.path.join(os.path.sep, 'data', 'kas7897', 'dPLHBVrelease', 'output', 'rnnStreamflow')
+# Root directory to save training results: /data/rnnStreamflow
+# rootOut = "./output/streamflow/"
 
+# Root directory to save training results: /data/rnnStreamflow
+if forType == 'daymet':
+    varF = ['dayl', 'prcp', 'srad', 'tmean', 'vp']
+else:
+    varF = ['dayl', 'prcp', 'srad', 'tmax', 'vp']
 # Define all the configurations into dictionary variables
 # three purposes using these dictionaries. 1. saved as configuration logging file. 2. for future testing. 3. can also
 # be used to directly train the model when interfaceOpt == 0
 
 # define dataset
 # default module stores default configurations, using update to change the config
+attrLst = [ 'p_mean','pet_mean','p_seasonality','frac_snow','aridity','high_prec_freq','high_prec_dur',
+               'low_prec_freq','low_prec_dur', 'elev_mean', 'slope_mean', 'area_gages2', 'frac_forest', 'lai_max',
+               'lai_diff', 'gvf_max', 'gvf_diff', 'dom_land_cover_frac', 'dom_land_cover', 'root_depth_50',
+               'soil_depth_pelletier', 'soil_depth_statsgo', 'soil_porosity', 'soil_conductivity',
+               'max_water_content', 'sand_frac', 'silt_frac', 'clay_frac', 'geol_1st_class', 'glim_1st_class_frac',
+               'geol_2nd_class', 'glim_2nd_class_frac', 'carbonate_rocks_frac', 'geol_porostiy', 'geol_permeability']
 optData = default.optDataCamels
 optData = default.update(
-    optData, varT=camels.forcingLst, varC=camels.attrLstSel, tRange=Ttrain
-)  # Update the training period
+    optData, varT=varF, varC=attrLst, tRange=Ttrain, forType=forType, subset=subset_train)  # Update the training period
 
-if (interfaceOpt == 1) and (2 not in Action):
+# if (interfaceOpt == 1) and (2 not in Action):
+if (interfaceOpt == 1) and (loadTrain is True):
     # load training data explicitly for the interpretable interface. Notice: if you want to apply our codes to your own
     # dataset, here is the place you can replace data.
     # read data from original CAMELS dataset
     # df: CAMELS dataframe; x: forcings[nb,nt,nx]; y: streamflow obs[nb,nt,ny]; c:attributes[nb,nc]
     # nb: number of basins, nt: number of time steps (in Ttrain), nx: number of time-dependent forcing variables
     # ny: number of target variables, nc: number of constant attributes
-    df = camels.DataframeCamels(subset=optData["subset"], tRange=optData["tRange"])
-    x = df.getDataTs(varLst=optData["varT"], doNorm=False, rmNan=False)
-    y = df.getDataObs(doNorm=False, rmNan=False, basinnorm=False)
+    df = camels.DataframeCamels(subset=optData["subset"], tRange=optData["tRange"], forType=forType)
+    x = df.getDataTs(varLst=optData["varT"], doNorm=False, rmNan=False, flow_regime=flow_regime)
+    y = df.getDataObs(doNorm=False, rmNan=False, basinnorm=False, flow_regime=flow_regime)
     # transform discharge from ft3/s to mm/day and then divided by mean precip to be dimensionless.
     # output = discharge/(area*mean_precip)
     # this can also be done by setting the above option "basinnorm = True" for df.getDataObs()
     y_temp = camels.basinNorm(y, optData["subset"], toNorm=True)
-    c = df.getDataConst(varLst=optData["varC"], doNorm=False, rmNan=False)
+    c = df.getDataConst(varLst=optData["varC"], doNorm=False, rmNan=False, flow_regime=flow_regime)
 
     # process, do normalization and remove nan
     series_data = np.concatenate([x, y_temp], axis=2)
-    seriesvarLst = camels.forcingLst + ["runoff"]
+    seriesvarLst = varF + ["runoff"]
     # calculate statistics for norm and saved to a dictionary
     statDict = camels.getStatDic(
-        attrLst=camels.attrLstSel,
+        flow_regime=flow_regime,
+        attrLst=attrLst,
         attrdata=c,
         seriesLst=seriesvarLst,
         seriesdata=series_data,
     )
     # normalize
-    attr_norm = camels.transNormbyDic(c, camels.attrLstSel, statDict, toNorm=True)
+    attr_norm = camels.transNormbyDic(c, attrLst, statDict, toNorm=True, flow_regime=flow_regime)
     attr_norm[np.isnan(attr_norm)] = 0.0
     series_norm = camels.transNormbyDic(
-        series_data, seriesvarLst, statDict, toNorm=True
+        series_data, seriesvarLst, statDict, toNorm=True, flow_regime=flow_regime
     )
 
     # prepare the inputs
@@ -132,7 +156,11 @@ else:
     optModel = default.update(default.optLstm, name="hydroDL.model.rnn.CpuLstmModel")
 optModel = default.update(default.optLstm, hiddenSize=HIDDENSIZE)
 # define loss function
-optLoss = default.optLossRMSE
+if flow_regime==0:
+    optLoss = default.optLossRMSE
+elif flow_regime==1:
+    optLoss = default.optLossNSEBatch
+
 # define training options
 optTrain = default.update(
     default.optTrainCamels,
@@ -140,27 +168,31 @@ optTrain = default.update(
     nEpoch=EPOCH,
     saveEpoch=saveEPOCH,
     seed=seedid,
+    trainBuff=trainBuff
 )
 
 # define output folder for model results
-exp_name = "CAMELSDemo"
+exp_name = f"CAMELSDemo{seedid}"
 exp_disp = "TestRun"
 save_path = os.path.join(
     exp_name,
     exp_disp,
-    "epochs{}_batch{}_rho{}_hiddensize{}_Tstart{}_Tend{}".format(
+    "epochs{}_batch{}_rho{}_hiddensize{}_Tstart{}_Tend{}_trainBuff{}_flowregime{}".format(
         optTrain["nEpoch"],
         optTrain["miniBatch"][0],
         optTrain["miniBatch"][1],
         optModel["hiddenSize"],
         optData["tRange"][0],
         optData["tRange"][1],
+        optTrain['trainBuff'],
+        flow_regime,
     ),
 )
 
+
 # Train the base model without data integration
 if 0 in Action:
-    out = os.path.join(rootOut, save_path, "All-85-95")  # output folder to save results
+    out = os.path.join(rootOut, save_path, "All")  # output folder to save results
     # Wrap up all the training configurations to one dictionary in order to save into "out" folder
     masterDict = wrapMaster(out, optData, optModel, optLoss, optTrain)
     if interfaceOpt == 1:  # use the more interpretable version interface
@@ -173,7 +205,10 @@ if 0 in Action:
             model = CpuLstmModel(nx=nx, ny=ny, hiddenSize=HIDDENSIZE)
         optModel = default.update(optModel, nx=nx, ny=ny)
         # the loaded model should be consistent with the 'name' in optModel Dict above for logging purpose
-        lossFun = RmseLoss()
+        if flow_regime==0:
+            lossFun = RmseLoss()
+        elif flow_regime==1:
+            lossFun = NSELossBatch(np.nanstd(yTrain, axis=1),device = device)
         # the loaded loss should be consistent with the 'name' in optLoss Dict above for logging purpose
         # update and write the dictionary variable to out folder for logging and future testing
         masterDict = wrapMaster(out, optData, optModel, optLoss, optTrain)
@@ -193,6 +228,7 @@ if 0 in Action:
             miniBatch=[BATCH_SIZE, RHO],
             saveEpoch=saveEPOCH,
             saveFolder=out,
+            bufftime=trainBuff
         )
     elif interfaceOpt == 0:  # directly train the model using dictionary variable
         master.train(masterDict)
@@ -206,7 +242,7 @@ if 1 in Action:
         # update parameter "daObs" for data dictionary variable
         optData = default.update(default.optDataCamels, daObs=nDay)
         # define output folder for DI models
-        out = os.path.join(rootOut, save_path, "All-85-95-DI" + str(nDay))
+        out = os.path.join(rootOut, save_path, "All-DI" + str(nDay))
         masterDict = wrapMaster(out, optData, optModel, optLoss, optTrain)
         if interfaceOpt == 1:
             # optData['daObs'] != 0, load previous observation data to integrate
@@ -254,28 +290,34 @@ if 1 in Action:
 
 # Test models
 if 2 in Action:
+    testTrainBuff = True
+    loadtrainBuff = 0
     TestEPOCH = 300  # choose the model to test after trained "TestEPOCH" epoches
     # generate a folder name list containing all the tested model output folders
-    caseLst = ["All-85-95"]
-    nDayLst = [1, 3]  # which DI models to test: DI(1), DI(3)
-    for nDay in nDayLst:
-        caseLst.append("All-85-95-DI" + str(nDay))
+    caseLst = ["All"]
+    if optData["daObs"] > 0:
+        nDayLst = [1, 3]  # which DI models to test: DI(1), DI(3)
+        for nDay in nDayLst:
+            caseLst.append("All-DI" + str(nDay))
     outLst = [
         os.path.join(rootOut, save_path, x) for x in caseLst
-    ]  # outLst includes all the directories to test
+    ]
+    # outLst = [os.path.join(rootOut, save_path)]
+    # outLst includes all the directories to test
     subset = "All"  # 'All': use all the CAMELS gages to test; Or pass the gage list
-    tRange = [19951001, 20051001]  # Testing period
-    testBatch = 100  # do batch forward to save GPU memory
+    tRange = [19951001, 20101001]
+    TestBuff = xTrain.shape[1] - loadtrainBuff    # Testing period
+    testBatch = 15  # do batch forward to save GPU memory
     predLst = list()
     for out in outLst:
         if interfaceOpt == 1:  # use the more interpretable version interface
             # load testing data
             mDict = readMasterFile(out)
             optData = mDict["data"]
-            df = camels.DataframeCamels(subset=subset, tRange=tRange)
-            x = df.getDataTs(varLst=optData["varT"], doNorm=False, rmNan=False)
-            obs = df.getDataObs(doNorm=False, rmNan=False, basinnorm=False)
-            c = df.getDataConst(varLst=optData["varC"], doNorm=False, rmNan=False)
+            df = camels.DataframeCamels(subset=subset, tRange=tRange,forType=optData['forType'])
+            x = df.getDataTs(varLst=optData["varT"], doNorm=False, rmNan=False, flow_regime=flow_regime)
+            obs = df.getDataObs(doNorm=False, rmNan=False, basinnorm=False, flow_regime=flow_regime)
+            c = df.getDataConst(varLst=optData["varC"], doNorm=False, rmNan=False, flow_regime=flow_regime)
 
             # do normalization and remove nan
             # load the saved statDict to make sure using the same statistics as training data
@@ -284,11 +326,15 @@ if 2 in Action:
                 statDict = json.load(fp)
             seriesvarLst = optData["varT"]
             attrLst = optData["varC"]
-            attr_norm = camels.transNormbyDic(c, attrLst, statDict, toNorm=True)
+            attr_norm = camels.transNormbyDic(c, attrLst, statDict, toNorm=True, flow_regime=flow_regime)
             attr_norm[np.isnan(attr_norm)] = 0.0
-            xTest = camels.transNormbyDic(x, seriesvarLst, statDict, toNorm=True)
+            xTest = camels.transNormbyDic(x, seriesvarLst, statDict, toNorm=True, flow_regime=flow_regime)
             xTest[np.isnan(xTest)] = 0.0
             attrs = attr_norm
+
+            if testTrainBuff is True:
+                xTestBuff = xTrain[:, -TestBuff:, :]
+                xTest = np.concatenate([xTestBuff, xTest], axis=1)
 
             if optData["daObs"] > 0:
                 # optData['daObs'] != 0, load previous observation data to integrate
@@ -318,14 +364,16 @@ if 2 in Action:
                 testmodel, xIn, c=attrs, batchSize=testBatch, filePathLst=filePathLst
             )
             # read out predictions
-            dataPred = np.ndarray([obs.shape[0], obs.shape[1], len(filePathLst)])
+            # dataPred = np.ndarray([obs.shape[0], obs.shape[1], len(filePathLst)])
+            dataPred = np.ndarray([xTest.shape[0], xTest.shape[1], len(filePathLst)])
+
             for k in range(len(filePathLst)):
                 filePath = filePathLst[k]
                 dataPred[:, :, k] = pd.read_csv(
-                    filePath, dtype=np.float, header=None
+                    filePath, dtype=float, header=None
                 ).values
             # transform back to the original observation
-            temppred = camels.transNormbyDic(dataPred, "runoff", statDict, toNorm=False)
+            temppred = camels.transNormbyDic(dataPred, "runoff", statDict, toNorm=False, flow_regime=flow_regime)
             pred = camels.basinNorm(temppred, subset, toNorm=False)
 
         elif interfaceOpt == 0:  # only for models trained by the pro interface
@@ -340,8 +388,17 @@ if 2 in Action:
             )
 
         # change the units ft3/s to m3/s
-        obs = obs * 0.0283168
-        pred = pred * 0.0283168
+        if testTrainBuff is True:
+            obs = obs[:, 0:, :] * 0.0283168
+        else:
+            obs = obs[:, TestBuff:, :] * 0.0283168
+        # obs = obs * 0.0283168
+        pred = pred[:, TestBuff:, :] * 0.0283168
+        # pred = pred * 0.0283168
+
+        # prediction and obs to mm/day
+        obs = camels.basinTrans(obs, subset)
+        pred = camels.basinTrans(pred, subset)
         predLst.append(pred)  # the prediction list for all the models
 
     # calculate statistic metrics
@@ -349,7 +406,7 @@ if 2 in Action:
 
     # Show boxplots of the results
     plt.rcParams["font.size"] = 14
-    keyLst = ["Bias", "NSE", "FLV", "FHV"]
+    keyLst = ["Bias", "NSE", "KGE", "FLV", "FHV", "AFLV", "AFHV", "highRMSE", "lowRMSE"]
     dataBox = list()
     for iS in range(len(keyLst)):
         statStr = keyLst[iS]
@@ -359,14 +416,21 @@ if 2 in Action:
             data = data[~np.isnan(data)]
             temp.append(data)
         dataBox.append(temp)
+    print(
+        "Bias (mm/day), NSE,KGE, FLV, FHV, AFLV, AFHV, highRMSE (mm/day), lowRMSE (mm/day)",
+        np.nanmedian(dataBox[0][0]), np.nanmedian(dataBox[1][0]), np.nanmedian(dataBox[2][0]), np.nanmedian(dataBox[3][0]), np.nanmedian(dataBox[4][0]), np.nanmedian(dataBox[5][0]),
+        np.nanmedian(dataBox[6][0]), np.nanmedian(dataBox[7][0]), np.nanmedian(dataBox[8][0])
+    )
     labelname = ["LSTM"]
-    for nDay in nDayLst:
-        labelname.append("DI(" + str(nDay) + ")")
-    xlabel = ["Bias ($\mathregular{m^3}$/s)", "NSE", "FLV(%)", "FHV(%)"]
+    if optData["daObs"] > 0:
+        for nDay in nDayLst:
+            labelname.append("DI(" + str(nDay) + ")")
+    # xlabel = ["Bias ($\mathregular{m^3}$/s)", "NSE", "FLV(%)", "FHV(%)"]
+    xlabel = keyLst
     fig = plot.plotBoxFig(dataBox, xlabel, labelname, sharey=False, figsize=(12, 5))
     fig.patch.set_facecolor("white")
     fig.show()
-    # plt.savefig(os.path.join(rootOut, save_path, "Boxplot.png"), dpi=500)
+    plt.savefig(os.path.join(rootOut, save_path, "Boxplot.png"), dpi=500)
 
     # Plot timeseries and locations
     plt.rcParams["font.size"] = 12
@@ -392,7 +456,10 @@ if 2 in Action:
             yPlot.append(y[iGrid, :])
         # get the NSE value of LSTM and DI(1) model
         NSE_LSTM = str(round(statDictLst[0]["NSE"][iGrid], 2))
-        NSE_DI1 = str(round(statDictLst[1]["NSE"][iGrid], 2))
+        if optData["daObs"] > 0:
+            NSE_DI1 = str(round(statDictLst[1]["NSE"][iGrid], 2))
+        else:
+            NSE_DI1 = 'nil'
         # plot time series
         plot.plotTS(
             t,
@@ -417,13 +484,12 @@ if 2 in Action:
     )
     fig.patch.set_facecolor("white")
     fig.show()
-    # plt.savefig(os.path.join(rootOut, save_path, "/Timeseries.png"), dpi=500)
+    plt.savefig(os.path.join(rootOut, save_path, "Timeseries.png"), dpi=500)
 
     # Plot NSE spatial patterns
     gageinfo = camels.gageDict
     gagelat = gageinfo["lat"]
     gagelon = gageinfo["lon"]
-    nDayLst = [1, 3]
     fig, axs = plt.subplots(3, 1, figsize=(8, 8), constrained_layout=True)
     axs = axs.flat
     data = statDictLst[0]["NSE"]
@@ -436,19 +502,20 @@ if 2 in Action:
         cRange=[0.0, 1.0],
         shape=None,
     )
-    data = statDictLst[1]["NSE"]
-    plot.plotMap(
-        data,
-        ax=axs[1],
-        lat=gagelat,
-        lon=gagelon,
-        title="(b) DI(1)",
-        cRange=[0.0, 1.0],
-        shape=None,
-    )
-    deltaNSE = statDictLst[1]["NSE"] - statDictLst[0]["NSE"]
-    plot.plotMap(
-        deltaNSE, ax=axs[2], lat=gagelat, lon=gagelon, title="(c) Delta NSE", shape=None
-    )
+    if optData["daObs"] > 0:
+        data = statDictLst[1]["NSE"]
+        plot.plotMap(
+            data,
+            ax=axs[1],
+            lat=gagelat,
+            lon=gagelon,
+            title="(b) DI(1)",
+            cRange=[0.0, 1.0],
+            shape=None,
+        )
+        deltaNSE = statDictLst[1]["NSE"] - statDictLst[0]["NSE"]
+        plot.plotMap(
+            deltaNSE, ax=axs[2], lat=gagelat, lon=gagelon, title="(c) Delta NSE", shape=None
+        )
     fig.show()
-    # plt.savefig(os.path.join(rootOut, save_path, "/NSEPattern.png"), dpi=500)
+    plt.savefig(os.path.join(rootOut, save_path, "NSEPattern.png"), dpi=500)

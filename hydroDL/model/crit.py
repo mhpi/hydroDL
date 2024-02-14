@@ -189,7 +189,64 @@ class NSELosstest(torch.nn.Module):
         loss = losssum / nsample
         return loss
 
+class NSELossBatch(torch.nn.Module):
+    # Same as Fredrick 2019, batch NSE loss
+    # stdarray: the standard deviation of the runoff for all basins
+    def __init__(self, stdarray,  eps=0.1,device = 'cpu'):
+        super(NSELossBatch, self).__init__()
+        self.std = stdarray
+        self.eps = eps
+        self.device = device
 
+    def forward(self, output, target, igrid):
+        nt = target.shape[0]
+        stdse = np.tile(self.std[igrid].T, (nt, 1))
+
+        stdbatch = torch.tensor(stdse, requires_grad=False).float().to(self.device)
+        p0 = output[:, :, 0]   # dim: Time*Gage
+        t0 = target[:, :, 0]
+        mask = t0 == t0
+        p = p0[mask]
+        t = t0[mask]
+        stdw = stdbatch[mask]
+        sqRes = (p - t)**2
+        normRes = sqRes / (stdw + self.eps)**2
+        loss = torch.mean(normRes)
+
+        # sqRes = (t0 - p0)**2 # squared error
+        # normRes = sqRes / (stdbatch + self.eps)**2
+        # mask = t0 == t0
+        # loss = torch.mean(normRes[mask])
+        return loss
+        
+class NSESqrtLossBatch(torch.nn.Module):
+    # Same as Fredrick 2019, batch NSE loss, use RMSE and STD instead
+    # stdarray: the standard deviation of the runoff for all basins
+    def __init__(self, stdarray, eps=0.1,device = 'cpu'):
+        super(NSESqrtLossBatch, self).__init__()
+        self.std = stdarray
+        self.eps = eps
+        self.device = device
+
+    def forward(self, output, target, igrid):
+        nt = target.shape[0]
+        stdse = np.tile(self.std[igrid], (nt, 1))
+        stdbatch = torch.tensor(stdse, requires_grad=False).float().to(self.device)
+        p0 = output[:, :, 0]   # dim: Time*Gage
+        t0 = target[:, :, 0]
+        mask = t0 == t0
+        p = p0[mask]
+        t = t0[mask]
+        stdw = stdbatch[mask]
+        sqRes = torch.sqrt((p - t)**2)
+        normRes = sqRes / (stdw + self.eps)
+        loss = torch.mean(normRes)
+
+        # sqRes = (t0 - p0)**2 # squared error
+        # normRes = sqRes / (stdbatch + self.eps)**2
+        # mask = t0 == t0
+        # loss = torch.mean(normRes[mask])
+        return loss
 class TrendLoss(torch.nn.Module):
     # Add the trend part to the loss
     def __init__(self):
