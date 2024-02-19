@@ -8,7 +8,7 @@ There are two different methods for hydroDL installation:
 
 ### Create a new environment, then activate it
   ```Shell
-conda create -n mhpihydrodl python=3.8
+conda create -n mhpihydrodl python=3.10
 conda activate mhpihydrodl
 ```
 
