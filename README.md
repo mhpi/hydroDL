@@ -8,7 +8,7 @@ There are two different methods for hydroDL installation:
 
 ### Create a new environment, then activate it
   ```Shell
-conda create -n mhpihydrodl python=3.7
+conda create -n mhpihydrodl python=3.8
 conda activate mhpihydrodl
 ```
 
@@ -104,20 +104,17 @@ How to use: [click here](example/multiscale/README.md)
 Related papers:  
 Liu et al. (2022). [A multiscale deep learning model for soil moisture integrating satellite and in-situ data](https://doi.org/10.1029/2021GL096847), Geophysical Research Letters.
 
-# Citations
+# Citation (Sort by year)
 
 If you find our code to be useful, please cite the following papers:
+
+Liu, J., Rahmani, F., Lawson, K., & Shen, C. A multiscale deep learning model for soil moisture integrating satellite and in-situ data. Geophysical Research Letters, e2021GL096847 (2022). https://doi.org/10.1029/2021GL096847
 
 Feng, DP., Lawson, K., and CP. Shen, Mitigating prediction error of deep learning streamflow models in large data-sparse regions with ensemble modeling and soft data, Geophysical Research Letters (2021), https://doi.org/10.1029/2021GL092999
 
 Feng, DP, K. Fang and CP. Shen, Enhancing streamflow forecast and extracting insights using continental-scale long-short term memory networks with data integration, Water Resources Research (2020), https://doi.org/10.1029/2019WR026793
 
 Shen, CP., A trans-disciplinary review of deep learning research and its relevance for water resources scientists, Water Resources Research. 54(11), 8558-8593, doi: 10.1029/2018WR022643 (2018) https://doi.org/10.1029/2018WR022643
-
-Liu, J., Rahmani, F., Lawson, K., & Shen, C. A multiscale deep learning model for soil moisture integrating satellite and in-situ data. Geophysical Research Letters, e2021GL096847 (2022). https://doi.org/10.1029/2021GL096847
-
-
-Major code contributor: Dapeng Feng (PhD Student, Penn State), Jiangtao Liu(PhD Student., Penn State), Tadd Bindas (PhD Student., Penn State), and Kuai Fang (PhD., Penn State).
 
 # License
 hydroDL has a Non-Commercial license, as found in the [LICENSE](./LICENSE) file.
