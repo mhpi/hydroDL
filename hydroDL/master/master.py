@@ -95,7 +95,7 @@ def namePred(out, tRange, subset, epoch=None, doMC=False, suffix=None):
 #     for k in range(len(filePathLst)):
 #         filePath = filePathLst[k]
 #         dataPred[:, :, k] = pd.read_csv(
-#             filePath, dtype=np.float, header=None).values
+#             filePath, dtype=np.float64 header=None).values
 #     isSigmaX = False
 #     if mDict['loss']['name'] == 'hydroDL.model.crit.SigmaLoss':
 #         isSigmaX = True
@@ -737,7 +737,7 @@ def test(
                     doMC=doMC,
                 )
                 # read predicted results
-                dataPred = pd.read_csv(tempfilePath, dtype=np.float, header=None).values
+                dataPred = pd.read_csv(tempfilePath, dtype=np.float64 header=None).values
                 updateData = np.full(initobs.shape, 0.0)
                 updateData[:, 1:, 0] = dataPred[:, 0:-1]
                 updateData[:, fixIndex, :] = initobs[:, fixIndex, :]
@@ -761,7 +761,7 @@ def test(
     dataPred = np.ndarray([obs.shape[0], obs.shape[1], len(filePathLst)])
     for k in range(len(filePathLst)):
         filePath = filePathLst[k]
-        dataPred[:, :, k] = pd.read_csv(filePath, dtype=np.float, header=None).values
+        dataPred[:, :, k] = pd.read_csv(filePath, dtype=np.float64 header=None).values
     isSigmaX = False
     if mDict["loss"]["name"] == "hydroDL.model.crit.SigmaLoss" or doMC is not False:
         isSigmaX = True
