@@ -92,7 +92,7 @@ class LoadCSV(object):
                 path_xdata = os.path.join(
                     self.csv_path_s, str(year_int), var_s + ".csv"
                 )
-                df = pd.read_csv(path_xdata, dtype=float, header=None)  # pixel, time
+                df = pd.read_csv(path_xdata, dtype=np.float32, header=None)  # pixel, time
 
                 df_a = df.values  # pixel, time
                 if ndx_year == 0:
@@ -102,7 +102,7 @@ class LoadCSV(object):
 
             elif var_type in ["var_c"]:
                 path_cData = os.path.join(self.csv_path_s, "const", var_s + ".csv")
-                df = pd.read_csv(path_cData, dtype=float, header=None,)  # pixel,
+                df = pd.read_csv(path_cData, dtype=np.float32, header=None,)  # pixel,
 
                 df_a = df.values  # pixel,
                 data = df_a
