@@ -142,7 +142,7 @@ dependencies:
   - python=3.10.13=h955ad1f_0
   - python-dateutil=2.8.2=pyhd3eb1b0_0
   - python-tzdata=2023.3=pyhd3eb1b0_0
-  - pytorch=2.1.1=py3.10_cuda12.1_cudnn8.9.2_0
+  - pytorch==2.0.1
   - pytorch-cuda=12.1=ha16c6d3_5
   - pytorch-mutex=1.0=cuda
   - pytz=2023.3.post1=py310h06a4308_0
@@ -160,9 +160,8 @@ dependencies:
   - tbb=2021.8.0=hdb19cb5_0
   - tk=8.6.12=h1ccaba5_0
   - tomli=2.0.1=py310h06a4308_0
-  - torchaudio=2.1.1=py310_cu121
-  - torchtriton=2.1.0=py310
-  - torchvision=0.16.1=py310_cu121
+  - torchaudio==2.0.2
+  - torchvision==0.15.2
   - tornado=6.3.3=py310h5eee18b_0
   - tqdm=4.66.1=pyhd8ed1ab_0
   - typing_extensions=4.7.1=py310h06a4308_0
