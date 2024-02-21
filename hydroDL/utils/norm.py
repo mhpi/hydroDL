@@ -38,7 +38,7 @@ def trans_norm(
     if stat is None:
         # stat = [90 percentile,10 percentile, mean,std]
 
-        stat = pd.read_csv(csv_path_s, dtype=np.float, header=None).values.flatten()
+        stat = pd.read_csv(csv_path_s, dtype=float, header=None).values.flatten()
 
     if from_raw:
         data_out = (data - stat[2]) / stat[3]

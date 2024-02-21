@@ -109,7 +109,7 @@ def readDBinfo(*, rootDB, subset):
     indSub = dfSubset.values.flatten()
 
     crdFile = os.path.join(rootDB, rootName, "crd.csv")
-    crdRoot = pd.read_csv(crdFile, dtype=np.float, header=None).values
+    crdRoot = pd.read_csv(crdFile, dtype=float, header=None).values
 
     indAll = np.arange(0, crdRoot.shape[0], dtype=np.int64)
     if np.array_equal(indSub, np.array([-1])):
@@ -162,7 +162,7 @@ def readDataTS(*, rootDB, rootName, indSub, indSkip, yrLst, fieldName):
         t1 = time.time()
         dataFile = os.path.join(rootDB, rootName, str(yr), fieldName + ".csv")
         dataTemp = pd.read_csv(
-            dataFile, dtype=np.float, skiprows=indSkip, header=None
+            dataFile, dtype=float, skiprows=indSkip, header=None
         ).values
         k2 = k1 + dataTemp.shape[1]
         data[:, k1:k2] = dataTemp
@@ -176,7 +176,7 @@ def readDataConst(*, rootDB, rootName, indSub, indSkip, fieldName):
     # read data
     dataFile = os.path.join(rootDB, rootName, "const", fieldName + ".csv")
     data = pd.read_csv(
-        dataFile, dtype=np.float, skiprows=indSkip, header=None
+        dataFile, dtype=float, skiprows=indSkip, header=None
     ).values.flatten()
     data[np.where(data == -9999)] = np.nan
     return data
@@ -189,7 +189,7 @@ def readStat(*, rootDB, fieldName, isConst=False):
         statFile = os.path.join(
             rootDB, "Statistics", "const_" + fieldName + "_stat.csv"
         )
-    stat = pd.read_csv(statFile, dtype=np.float, header=None).values.flatten()
+    stat = pd.read_csv(statFile, dtype=float, header=None).values.flatten()
     return stat
 
 

@@ -232,7 +232,7 @@ for iEns in range(len(seedid)):  # test trained models with different seeds
                 for k in range(len(filePathLst)):
                     filePath = filePathLst[k]
                     dataPred[:, :, k] = pd.read_csv(
-                        filePath, dtype=np.float, header=None
+                        filePath, dtype=float, header=None
                     ).values
                 # transform back to the original observation
                 temppred = camels.transNormbyDic(

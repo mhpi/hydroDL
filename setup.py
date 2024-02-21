@@ -17,7 +17,7 @@ DESCRIPTION = "Hydrological Deep Learning"
 URL = "https://github.com/mhpi/hydroDL/"
 EMAIL = "cshen@engr.psu.edu"
 AUTHOR = "MHPI"
-REQUIRES_PYTHON = ">=3.0"
+REQUIRES_PYTHON = ">=3.9"
 VERSION = None
 
 # The rest you shouldn't have to touch too much :)
