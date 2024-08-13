@@ -8,6 +8,9 @@ def statError(pred, target):
     ngrid, nt = pred.shape
     # Bias
     Bias = np.nanmean(pred - target, axis=1)
+
+    absBias = np.nanmean(abs(pred - target), axis=1)
+
     # RMSE
     RMSE = np.sqrt(np.nanmean((pred - target)**2, axis=1))
     # ubRMSE
@@ -91,7 +94,7 @@ def statError(pred, target):
                 R2[k] = 1-SSRes/SST
                 NSE[k] = 1-SSRes/SST
 
-    outDict = dict(Bias=Bias, RMSE=RMSE, ubRMSE=ubRMSE, Corr=Corr, CorrSp=CorrSp, R2=R2, NSE=NSE,
+    outDict = dict(Bias=Bias,absBias = absBias, RMSE=RMSE, ubRMSE=ubRMSE, Corr=Corr, CorrSp=CorrSp, R2=R2, NSE=NSE,
                    FLV=PBiaslow, FHV=PBiashigh, PBias=PBias, PBiasother=PBiasother, AFLV=absPBiaslow,
                    AFHV=absPBiashigh, AFMV=absPBiasother, KGE=KGE, KGE12=KGE12,
                    lowRMSE=RMSElow, highRMSE=RMSEhigh, midRMSE=RMSEother)
