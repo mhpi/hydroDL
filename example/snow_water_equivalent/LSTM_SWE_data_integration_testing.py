@@ -25,9 +25,10 @@ traingpuid = 0
 torch.cuda.set_device(traingpuid)
 
 
-rootDB_s=f'/mnt/sdb/yxs275/check_code/KFOLD_inputs/SNOTEL_filter_data_1988/'
+rootDB_s=f'/mnt/sdb/yxs275/check_code/SWE_data/'
+modelpath = "/mnt/sdb/yxs275/snow_hydroDL/output/"
 
-DateRange=['2000-01-01', '2019-12-31']
+DateRange=['2001-01-01', '2019-12-31']
 testDateRange=['2016-01-01', '2019-12-31']
 
 var_x_list =  ['pr_gridMET', 'tmmn_gridMET', 'tmmx_gridMET', 'srad_gridMET', 'vs_gridMET', 'th_gridMET',
@@ -46,6 +47,15 @@ DI_day = 30
 ## Data integration variable
 ##Can be ['SWE'] or ['snow_frac']
 DI_varibale = ['SWE']
+
+##Hyperparameters
+EPOCH = 600
+BATCH_SIZE = 100
+RHO = 365
+saveEPOCH = 50
+HIDDENSIZE = 256
+trainBuff = 365
+
 
 ### Read data:
 # load forcing and target data
@@ -114,20 +124,20 @@ target_train_norm = target_train_norm[:,DI_day:,:]
 target = xTrain[:,DI_day:,-len(targetLst):]
 
 ## Load model
-rootOut = "/mnt/sdb/yxs275/snow_hydroDL/output/"+'/LSTM_SWE_temp_DI_SWE_30/'
-out = os.path.join(rootOut, f"exp_EPOCH600_BS100_RHO365_HS256_trainBuff365") # output folder to save results
-if os.path.exists(out) is False:
-    os.mkdir(out)
+rootOut = modelpath +'/LSTM_SWE_temp'+f'_DI_{DI_varibale[0]}_{DI_day}'
+
+out = os.path.join(rootOut, f"exp_EPOCH{EPOCH}_BS{BATCH_SIZE}_RHO{RHO}_HS{HIDDENSIZE}_trainBuff{trainBuff}") # output folder to save results
+
 with open(out + '/scaler_stat.json') as f:
     stat_dict = json.load(f)
 
 ## test the model
-testepoch = 600
+testepoch = EPOCH  ## Can check other epochs too
 model_path = out
 print("Load model from ", model_path)
 testmodel = loadModel(model_path, epoch=testepoch)
 
-testbatch =200 #len(indexes)
+testbatch =200
 
 filePathLst = [out+f"/SWE_norm.csv"]
 

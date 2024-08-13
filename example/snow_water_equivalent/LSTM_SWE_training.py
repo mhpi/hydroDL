@@ -36,6 +36,7 @@ from hydroDL.model import crit, train
 from hydroDL.model import rnn as rnn
 from hydroDL.data import scale
 
+
 randomseed = 111111
 random.seed(randomseed)
 torch.manual_seed(randomseed)
@@ -48,9 +49,13 @@ traingpuid = 1
 torch.cuda.set_device(traingpuid)
 device = torch.cuda.current_device()
 
-
 ##Please contact us if you need the training data
-rootDB_s=f'/mnt/sdb/yxs275/check_code/KFOLD_inputs/SNOTEL_filter_data_1988/'
+## It can be downloaded temporarily from: https://pennstateoffice365-my.sharepoint.com/:f:/g/personal/yxs275_psu_edu/EvMxqcb1DkFDuO8KGZsy20sBq9qj4V_rAubNynpMaFBuvw?e=FF4kBb
+
+rootDB_s=f'/mnt/sdb/yxs275/check_code/SWE_data/'
+
+##Where to save your model
+savePath = "/mnt/sdb/yxs275/snow_hydroDL/output/"
 
 DateRange=['2001-01-01', '2019-12-31']
 TrainingDateRange=['2001-01-01', '2015-12-31']
@@ -70,9 +75,11 @@ time_range = pd.date_range(DateRange[0], DateRange[-1], freq='d')
 startyear = time_range[0].year
 endyear = time_range[-1].year
 for year in range(startyear,endyear+1):
+
     for fid, foring_ in enumerate(var_x_list+targetLst):
 
         foring_data = pd.read_csv(rootDB_s+'/'+str(year)+'/' + foring_ + '.csv', header=None, )
+
         foring_data = np.expand_dims(foring_data, axis = -1)
         if fid==0:
             xTrain_year = foring_data
@@ -126,12 +133,13 @@ target_train_norm = xTrain_norm[:,:,len(var_x_list):]
 
 ##Hyperparameters
 
-EPOCH = 600 # total epoches to train the mode
-BATCH_SIZE = 100
-RHO = 365
-saveEPOCH = 50
-HIDDENSIZE = 256
-trainBuff = 365
+EPOCH = 600 # total epochs to train the model
+BATCH_SIZE = 100 ## Number of sites used in one batch
+RHO = 365  ## Time length
+saveEPOCH = 50  ## Model will be saved per 50 epochs
+HIDDENSIZE = 256 ## Hiddensize of LSTM
+trainBuff = 365  ## Time length to warmup the states of the model
+
 nx = forcing_train_norm.shape[-1] + attribute_norm.shape[-1]  # update nx, nx = nx + nc
 ny =len(targetLst)
 
@@ -143,7 +151,7 @@ lossFun = crit.MSELoss()
 # loss function : NSE loss
 #lossFun = crit.NSELossBatch(np.nanstd(target_train_norm, axis=1 ),device =device)
 
-rootOut = "/mnt/sdb/yxs275/snow_hydroDL/output/"+'/LSTM_SWE_temp/'
+rootOut = savePath +'/LSTM_SWE_temp/'
 if os.path.exists(rootOut) is False:
     os.mkdir(rootOut)
 out = os.path.join(rootOut, f"exp_EPOCH{EPOCH}_BS{BATCH_SIZE}_RHO{RHO}_HS{HIDDENSIZE}_trainBuff{trainBuff}") # output folder to save results
