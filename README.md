@@ -104,9 +104,16 @@ How to use: [click here](example/multiscale/README.md)
 Related papers:  
 Liu et al. (2022). [A multiscale deep learning model for soil moisture integrating satellite and in-situ data](https://doi.org/10.1029/2021GL096847), Geophysical Research Letters.
 
+## [6.Training a Transformer model](https://zenodo.org/records/13664154)
+
+Related papers:  
+Liu, J., Bian, Y., Lawson, K., & Shen, C. (2024). Probing the limit of hydrologic predictability with the Transformer network. Journal of Hydrology, 637, 131389.
+
 # Citation (Sort by year)
 
 If you find our code to be useful, please cite the following papers:
+
+Liu, J., Bian, Y., Lawson, K., & Shen, C. (2024). Probing the limit of hydrologic predictability with the Transformer network. Journal of Hydrology, 637, 131389.
 
 Liu, J., Rahmani, F., Lawson, K., & Shen, C. A multiscale deep learning model for soil moisture integrating satellite and in-situ data. Geophysical Research Letters, e2021GL096847 (2022). https://doi.org/10.1029/2021GL096847
 
