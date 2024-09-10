@@ -69,7 +69,20 @@ pred = testModel(model,
 # Examples
 
 Several examples related to the above papers are presented here. **Click the title link** to see each example.
-## [1.Train a LSTM data integration model to make streamflow forecast](example/StreamflowExample-DI.py)
+
+## [1.Train a LSTM model to learn SMAP soil moisture](example/demo-LSTM-Tutorial.ipynb)
+The example dataset is embedded in this repo and can be found [here](example/data).
+You can also use [this script](example/train-lstm.py) to train model if you don't want to work with Jupyter Notebook.
+
+Related papers:  
+Fang et al. (2017), [Prolongation of SMAP to Spatio-temporally Seamless Coverage of Continental US Using a Deep Learning Neural Network](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075619), Geophysical Research Letters.
+
+## [2.Training a Transformer model](https://zenodo.org/records/13664154)
+
+Related papers:  
+Liu, J., Bian, Y., Lawson, K., & Shen, C. (2024). Probing the limit of hydrologic predictability with the Transformer network. Journal of Hydrology, 637, 131389.
+
+## [3.Train a LSTM data integration model to make streamflow forecast](example/StreamflowExample-DI.py)
 The dataset used is NCAR CAMELS dataset. Download CAMELS following [this link](https://ral.ucar.edu/solutions/products/camels). 
 Please download both forcing, observation data `CAMELS time series meteorology, observed flow, meta data (.zip)` and basin attributes `CAMELS Attributes (.zip)`. 
 Put two unzipped folders under the same directory, like `your/path/to/Camels/basin_timeseries_v1p2_metForcing_obsFlow`, and `your/path/to/Camels/camels_attributes_v2.0`. Set the directory path `your/path/to/Camels`
@@ -80,34 +93,22 @@ Computational benchmark: training of CAMELS data (w/ or w/o data integration) wi
 Related papers:  
 Feng et al. (2020). [Enhancing streamflow forecast and extracting insights using long‐short term memory networks with data integration at continental scales](https://doi.org/10.1029/2019WR026793). Water Resources Research.
 
-## [2.Train LSTM and CNN-LSTM models for prediction in ungauged regions](example/PUR/trainPUR-Reg.py)
+## [4.Train LSTM and CNN-LSTM models for prediction in ungauged regions](example/PUR/trainPUR-Reg.py)
 The dataset used is also NCAR CAMELS. Follow the instructions in the first example above to download and unzip the dataset. Use [this code](example/PUR/testPUR-Reg.py) to test your saved models after training finished.
 
 Related papers:  
 Feng et al. (2021). [Mitigating prediction error of deep learning streamflow models in large data-sparse regions with ensemble modeling and soft data](https://doi.org/10.1029/2021GL092999). Geophysical Research Letters.  
 Feng et al. (2020). [Enhancing streamflow forecast and extracting insights using long‐short term memory networks with data integration at continental scales](https://doi.org/10.1029/2019WR026793). Water Resources Research.
 
-## [3.Train a LSTM model to learn SMAP soil moisture](example/demo-LSTM-Tutorial.ipynb)
-The example dataset is embedded in this repo and can be found [here](example/data).
-You can also use [this script](example/train-lstm.py) to train model if you don't want to work with Jupyter Notebook.
-
-Related papers:  
-Fang et al. (2017), [Prolongation of SMAP to Spatio-temporally Seamless Coverage of Continental US Using a Deep Learning Neural Network](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075619), Geophysical Research Letters.
-
-## [4.Estimate uncertainty of a LSTM network ](example/train-lstm-mca.py)
+## [5.Estimate uncertainty of a LSTM network ](example/train-lstm-mca.py)
 Related papers:  
 Fang et al. (2020). [Evaluating the potential and challenges of an uncertainty quantification method for long short-term memory models for soil moisture predictions](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020WR028095), Water Resources Research.
 
-## [5.Training a multi-scale model](example/multiscale.py)
+## [6.Training a multi-scale model](example/multiscale.py)
 How to use: [click here](example/multiscale/README.md)
 
 Related papers:  
 Liu et al. (2022). [A multiscale deep learning model for soil moisture integrating satellite and in-situ data](https://doi.org/10.1029/2021GL096847), Geophysical Research Letters.
-
-## [6.Training a Transformer model](https://zenodo.org/records/13664154)
-
-Related papers:  
-Liu, J., Bian, Y., Lawson, K., & Shen, C. (2024). Probing the limit of hydrologic predictability with the Transformer network. Journal of Hydrology, 637, 131389.
 
 # Citation (Sort by year)
 
