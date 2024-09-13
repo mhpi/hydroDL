@@ -81,7 +81,7 @@ Computational benchmark: training of CAMELS data (w/ or w/o data integration) wi
 Related papers:  
 Feng et al. (2020). [Enhancing streamflow forecast and extracting insights using long‐short term memory networks with data integration at continental scales](https://doi.org/10.1029/2019WR026793). Water Resources Research.
 
-## [2.Training a Transformer model](https://zenodo.org/records/13664154)
+## [2.Train a Transformer model](https://zenodo.org/records/13664154)
 
 Related papers:  
 Liu, J., Bian, Y., Lawson, K., & Shen, C. (2024). Probing the limit of hydrologic predictability with the Transformer network. Journal of Hydrology, 637, 131389.
@@ -104,7 +104,7 @@ Feng et al. (2020). [Enhancing streamflow forecast and extracting insights using
 Related papers:  
 Fang et al. (2020). [Evaluating the potential and challenges of an uncertainty quantification method for long short-term memory models for soil moisture predictions](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020WR028095), Water Resources Research.
 
-## [6.Training a multi-scale model](example/multiscale.py)
+## [6.Train a multi-scale model](example/multiscale.py)
 How to use: [click here](example/multiscale/README.md)
 
 Related papers:  
