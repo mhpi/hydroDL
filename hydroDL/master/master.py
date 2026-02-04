@@ -42,7 +42,7 @@ def writeMasterFile(mDict):
 
 def loadModel(outFolder, epoch, modelName="model"):
     modelFile = os.path.join(outFolder, modelName + "_Ep" + str(epoch) + ".pt")
-    model = torch.load(modelFile)
+    model = torch.load(modelFile,weights_only=False)
     return model
 
 
