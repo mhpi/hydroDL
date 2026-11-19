@@ -5,7 +5,7 @@ import numpy as np
 import datetime as dt
 from hydroDL import utils # , pathCamels
 from hydroDL.utils.time import tRange2Array
-from pandas.api.types import is_numeric_dtype, is_string_dtype
+from pandas.api.types import infer_dtype, is_numeric_dtype
 import time
 import json
 from hydroDL.dataset import Dataframe
@@ -175,7 +175,7 @@ def readForcing(usgsIdLst, varLst, forData, nt):
     return x
 
 def is_really_string(series):
-    return series.dtype == 'O' and isinstance(series.iloc[0], str)
+    return infer_dtype(series, skipna=True) == "string"
 
 def readAttrAll(*, saveDict=False):
     dataFolder = os.path.join(dirDB, "camels_attributes_v2.0", "camels_attributes_v2.0")
